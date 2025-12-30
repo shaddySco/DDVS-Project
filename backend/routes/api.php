@@ -1,8 +1,22 @@
 <?php
-
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SubmissionController;
+use App\Http\Controllers\VoteController;
+use App\Http\Controllers\AuthController;
 
-// Public API routes (Demo – no auth yet)
-Route::post('/submit', [SubmissionController::class, 'store']);
-Route::get('/feed', [SubmissionController::class, 'index']);
+// Public routes
+Route::post('/auth/login', [AuthController::class, 'login']);
+Route::get('/auth/me', [AuthController::class, 'me']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/submissions', [SubmissionController::class, 'store']);
+    Route::get('/submissions/mine', [SubmissionController::class, 'mySubmissions']);
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/submissions', [SubmissionController::class, 'store']);
+    Route::get('/submissions/mine', [SubmissionController::class, 'mySubmissions']);
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/votes', [VoteController::class, 'store']);
+});
