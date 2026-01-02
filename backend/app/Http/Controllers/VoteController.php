@@ -23,8 +23,17 @@ class VoteController extends Controller
     /**
      * Cast a vote on a submission.
      */
+    
     public function store(StoreVoteRequest $request): JsonResponse
     {
+        if (
+    $submission->ownership_status === 'disputed' ||
+    $submission->ownership_status === 'invalidated'
+) {
+    return response()->json([
+        'message' => 'Voting is disabled for this submission.'
+    ], Response::HTTP_FORBIDDEN);
+}
       
          $user = Auth::user();
    

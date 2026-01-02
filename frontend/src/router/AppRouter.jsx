@@ -7,7 +7,7 @@ import Project from "../pages/Project";
 import Submit from "../pages/Submit";
 import Dashboard from "../pages/Dashboard";
 import Profile from "../pages/Profile";
-import SubmissionDetail from "./pages/SubmissionDetail";
+import SubmissionDetail from "../pages/SubmissionDetail";
 
 <Route path="/project/:id" element={<SubmissionDetail />} />
 
@@ -22,7 +22,7 @@ export default function AppRouter() {
         <Route element={<Layout />}>
           <Route path="/" element={<Landing />} />
           <Route path="/community" element={<Community />} />
-          <Route path="/project/:id" element={<Project />} />
+          <Route path="/project/:id" element={<SubmissionDetail />} />
           <Route
  path="/submit" element={
   <ProtectedRoute>

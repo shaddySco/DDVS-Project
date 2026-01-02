@@ -67,4 +67,13 @@ class SubmissionController extends Controller
 
         return response()->json($submissions);
     }
+
+    public function mine(): JsonResponse
+{
+    $submissions = Submission::where('user_id', auth()->id())
+        ->latest()
+        ->get();
+
+    return response()->json($submissions);
+}
 }

@@ -67,4 +67,19 @@ class ReputationService
     {
         return intdiv($user->xp, self::LEVEL_DIVISOR) + 1;
     }
+
+    public function invalidateSubmission(Submission $submission): void
+{
+    $votes = $submission->votes;
+
+    foreach ($votes as $vote) {
+        $this->removeXp($submission->user, 10);
+        $vote->delete();
+    }
+
+    $submission->update([
+        'ownership_status' => 'invalidated'
+    ]);
+}
+
 }

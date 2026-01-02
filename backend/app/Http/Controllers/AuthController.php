@@ -29,19 +29,8 @@ class AuthController extends Controller
 }
 
     public function me(Request $request)
-    {
-        $wallet = $request->header('X-Wallet-Address');
+{
+    return response()->json($request->user());
+}
 
-        if (!$wallet) {
-            return response()->json(['error' => 'Wallet not provided'], 401);
-        }
-
-        $user = User::where('wallet_address', $wallet)->first();
-
-        if (!$user) {
-            return response()->json(['error' => 'User not found'], 404);
-        }
-
-        return response()->json($user);
-    }
 }

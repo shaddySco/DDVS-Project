@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import axios from "axios";
+import axios from "../lib/axios";
 
 const AuthContext = createContext();
 
@@ -8,7 +8,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 🔹 Connect Wallet
+  // 🔹 Connect Wallet & Login
   const connectWallet = async () => {
     if (!window.ethereum) {
       alert("MetaMask not detected");
@@ -23,50 +23,56 @@ export function AuthProvider({ children }) {
       const address = accounts[0];
       setWalletAddress(address);
 
-      // Send wallet to backend
-      const response = await axios.post(
-        "http://127.0.0.1:8000/api/auth/login",
-        { wallet_address: address }
-      );
+      // 🔐 Login to backend
+      const res = await axios.post("/auth/login", {
+        wallet_address: address,
+      });
 
-      setUser(response.data);
+      const { user, token } = res.data;
+
+      // 🔑 Persist token
+      localStorage.setItem("ddvs_token", token);
+
+      // 🔑 Attach token globally
+      axios.defaults.headers.common[
+        "Authorization"
+      ] = `Bearer ${token}`;
+
+      setUser(user);
     } catch (error) {
-      console.error("Wallet connection failed:", error);
+      console.error("Wallet connection failed", error);
     }
   };
 
-  // 🔹 Fetch user if wallet already connected
+  // 🔹 Restore auth on refresh
   useEffect(() => {
-    const checkWallet = async () => {
-      if (!window.ethereum) {
+    const restoreAuth = async () => {
+      const token = localStorage.getItem("ddvs_token");
+
+      if (!token) {
         setLoading(false);
         return;
       }
 
-      const accounts = await window.ethereum.request({
-        method: "eth_accounts",
-      });
+      // 🔑 Re-attach token
+      axios.defaults.headers.common[
+        "Authorization"
+      ] = `Bearer ${token}`;
 
-      if (accounts.length > 0) {
-        const address = accounts[0];
-        setWalletAddress(address);
-
-        const response = await axios.get(
-          "http://127.0.0.1:8000/api/auth/me",
-          {
-            headers: {
-              "X-Wallet-Address": address,
-            },
-          }
-        );
-
-        setUser(response.data);
+      try {
+        const res = await axios.get("/auth/me");
+        setUser(res.data);
+        setWalletAddress(res.data.wallet_address);
+      } catch (error) {
+        console.error("Auth restore failed", error);
+        localStorage.removeItem("ddvs_token");
+        setUser(null);
       }
 
       setLoading(false);
     };
 
-    checkWallet();
+    restoreAuth();
   }, []);
 
   return (
