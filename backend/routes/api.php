@@ -6,7 +6,6 @@ use App\Http\Controllers\SubmissionController;
 use App\Http\Controllers\VoteController;
 use App\Http\Controllers\DisputeController;
 use App\Http\Controllers\VerificationController;
-
 /*
 |--------------------------------------------------------------------------
 | Authentication
@@ -64,3 +63,7 @@ Route::get('/submissions/{submission}', [SubmissionController::class, 'show']);
         [DisputeController::class, 'store']
     );
 });
+Route::post(
+    '/disputes/{dispute}/resolve',
+    [DisputeController::class, 'resolve']
+)->middleware('auth:sanctum');

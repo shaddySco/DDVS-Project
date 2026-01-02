@@ -6,6 +6,8 @@ use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
+use App\Models\Vote;
+
 
 class ReputationService
 {
@@ -81,5 +83,16 @@ class ReputationService
         'ownership_status' => 'invalidated'
     ]);
 }
+
+public function reverseVoteXP(Vote $vote): void
+{
+    $author = $vote->submission->user;
+
+    // Reverse XP safely
+    $author->update([
+        'xp' => max(0, $author->xp - 10),
+    ]);
+}
+
 
 }

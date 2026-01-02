@@ -33,4 +33,11 @@ class User extends Authenticatable
     {
         return intdiv($this->xp, 100) + 1;
     }
+
+    public function canResolveDisputes(): bool
+{
+    $level = floor($this->xp / 100) + 1;
+    return $level >= 5;
+}
+
 }
