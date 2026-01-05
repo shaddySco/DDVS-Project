@@ -6,6 +6,7 @@ use App\Http\Controllers\SubmissionController;
 use App\Http\Controllers\VoteController;
 use App\Http\Controllers\DisputeController;
 use App\Http\Controllers\VerificationController;
+use App\Http\Controllers\PublicVerificationController;
 /*
 |--------------------------------------------------------------------------
 | Authentication
@@ -28,7 +29,10 @@ Route::middleware('auth:sanctum')->get('/auth/me', [AuthController::class, 'me']
 
 // Public
 Route::get('/submissions', [SubmissionController::class, 'index']);
-
+Route::post(
+    '/submissions/{submission}/verify',
+    [SubmissionController::class, 'verify']
+);
 // Authenticated (STATIC ROUTES FIRST)
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/submissions/mine', [SubmissionController::class, 'mySubmissions']);
@@ -48,7 +52,6 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Public (PARAMETERIZED LAST)
-Route::get('/submissions/{submission}', [SubmissionController::class, 'show']);
 
 
 
@@ -67,3 +70,25 @@ Route::post(
     '/disputes/{dispute}/resolve',
     [DisputeController::class, 'resolve']
 )->middleware('auth:sanctum');
+
+//phase 7.4
+Route::get('/submissions/{submission}/proof', function (\App\Models\Submission $submission) {
+    abort_unless($submission->ownership_status === 'verified', 404);
+
+    return response()->json([
+        'submission_id' => $submission->id,
+        'wallet_address' => $submission->user->wallet_address,
+        'verified_at' => $submission->verified_at,
+        'attestation_hash' => $submission->attestation_hash,
+    ]);
+});
+
+Route::get(
+    '/public/verify/{id}',
+    [PublicVerificationController::class, 'show']
+);
+
+Route::get(
+    '/verify/{submission}',
+    [PublicVerificationController::class, 'show']
+);

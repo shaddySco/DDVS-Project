@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Submission;
+use App\Services\AttestationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,6 +15,9 @@ use kornrunner\Secp256k1;
 
 class VerificationController extends Controller
 {
+    /**
+     * Generate ownership verification message
+     */
     public function generateMessage(Submission $submission): JsonResponse
     {
         if ($submission->user_id !== Auth::id()) {
@@ -37,8 +41,13 @@ class VerificationController extends Controller
         ]);
     }
 
-    public function verifyOwnership(Request $request, Submission $submission): JsonResponse
-    {
+    /**
+     * Verify ownership + trigger Phase 7.3 attestation
+     */
+    public function verifyOwnership(
+        Request $request,
+        Submission $submission
+    ): JsonResponse {
         if ($submission->user_id !== Auth::id()) {
             return response()->json([
                 'message' => 'Unauthorized verification attempt.'
@@ -46,8 +55,8 @@ class VerificationController extends Controller
         }
 
         $request->validate([
-            'signature' => 'required|string',
-            'proof_path' => 'required|string',
+            'signature'   => 'required|string',
+            'proof_path'  => 'required|string',
         ]);
 
         if (!$submission->verification_message) {
@@ -56,6 +65,7 @@ class VerificationController extends Controller
             ], Response::HTTP_BAD_REQUEST);
         }
 
+        // 🔐 Recover wallet from signature
         $recoveredAddress = $this->recoverWalletAddress(
             $submission->verification_message,
             $request->signature
@@ -70,6 +80,7 @@ class VerificationController extends Controller
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
+        // 🧾 Verify GitHub proof
         if (!$this->verifyGithubProof(
             $submission->repository_url,
             $request->proof_path,
@@ -81,23 +92,39 @@ class VerificationController extends Controller
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
+        // ✅ Phase 6 — Trust verification
         $submission->update([
             'verification_signature' => $request->signature,
-            'verification_path' => $request->proof_path,
-            'ownership_status' => 'verified',
-            'verified_at' => now(),
+            'verification_path'      => $request->proof_path,
+            'ownership_status'       => 'verified',
+            'verified_at'            => now(),
+        ]);
+
+        // 🟢 Phase 7.3 — Cryptographic Attestation (deterministic)
+        $attestationHash = app(AttestationService::class)->generate(
+            Auth::user()->wallet_address,
+            $submission->id,
+            $submission->verified_at,
+            $submission->repository_url
+        );
+
+        $submission->update([
+            'attestation_hash' => $attestationHash,
         ]);
 
         return response()->json([
-            'message' => 'Submission ownership verified successfully.'
+            'message'           => 'Submission ownership verified successfully.',
+            'attestation_hash'  => $attestationHash,
         ]);
     }
 
     /**
      * Recover Ethereum wallet address from signed message
      */
-    protected function recoverWalletAddress(string $message, string $signature): ?string
-    {
+    protected function recoverWalletAddress(
+        string $message,
+        string $signature
+    ): ?string {
         try {
             $msg = "\x19Ethereum Signed Message:\n" . strlen($message) . $message;
             $msgHash = Keccak::hash($msg, 256);
@@ -127,7 +154,7 @@ class VerificationController extends Controller
     }
 
     /**
-     * Verify GitHub proof file exists and contains correct data
+     * Verify GitHub proof file existence and contents
      */
     protected function verifyGithubProof(
         string $repoUrl,
@@ -139,7 +166,7 @@ class VerificationController extends Controller
             return false;
         }
 
-        [$full, $owner, $repo] = $matches;
+        [, $owner, $repo] = $matches;
 
         $rawUrl = "https://raw.githubusercontent.com/{$owner}/{$repo}/main/{$proofPath}";
 

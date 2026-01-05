@@ -42,10 +42,8 @@ export default function SubmissionDetail() {
 
       setMessage(res.data.message);
 
-      // Refresh submission data (vote count)
       const updated = await axios.get(`/api/submissions/${id}`);
       setSubmission(updated.data);
-
     } catch (err) {
       if (err.response?.status === 409) {
         setMessage("You have already voted on this submission.");
@@ -94,6 +92,42 @@ export default function SubmissionDetail() {
 
       {message && (
         <p style={{ marginTop: "1rem", color: "#444" }}>{message}</p>
+      )}
+
+      {/* 🔐 PHASE 7.4 — VERIFICATION PROOF */}
+      {submission.ownership_status === "verified" && (
+        <div
+          className="verification-proof"
+          style={{
+            marginTop: "2rem",
+            padding: "1rem",
+            border: "1px solid #ddd",
+            borderRadius: "6px",
+            background: "#fafafa",
+          }}
+        >
+          <h3>Verification Proof</h3>
+
+          <p><strong>Status:</strong> Verified</p>
+
+          <p><strong>Attestation Hash:</strong></p>
+          <code style={{ wordBreak: "break-all" }}>
+            {submission.attestation_hash}
+          </code>
+
+          <p style={{ marginTop: "0.5rem" }}>
+            <strong>Verified At:</strong> {submission.verified_at}
+          </p>
+
+          <p style={{ marginTop: "0.5rem" }}>
+            <strong>How to verify:</strong>
+          </p>
+          <ol>
+            <li>Recompute hash using wallet + submission ID + timestamp</li>
+            <li>Confirm the hash matches this value</li>
+            <li>Verify existence on the blockchain</li>
+          </ol>
+        </div>
       )}
     </div>
   );

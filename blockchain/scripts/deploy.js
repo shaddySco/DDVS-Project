@@ -21,7 +21,21 @@ async function main() {
 
   // 3. Save Artifacts for Frontend
   saveFrontendFiles(address);
+
+  
 }
+async function main() {
+  const Attestation = await ethers.getContractFactory("DDVSAttestation");
+  const contract = await Attestation.deploy();
+  await contract.waitForDeployment();
+
+  console.log("DDVSAttestation deployed to:", await contract.getAddress());
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
 
 function saveFrontendFiles(contractAddress) {
   // We save to the frontend folder so the website can find it

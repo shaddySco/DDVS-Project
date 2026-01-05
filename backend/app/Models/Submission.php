@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-
+use App\Models\User;
 class Submission extends Model
 {
     protected $fillable = [
@@ -50,6 +50,9 @@ public function isInvalidated(): bool
 {
     return $this->ownership_status === 'invalidated';
 }
-
+public function user()
+{
+    return $this->belongsTo(User::class);
+}
 }
 
