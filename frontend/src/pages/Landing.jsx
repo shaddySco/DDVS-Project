@@ -1,32 +1,54 @@
+import { useEffect, useState } from "react";
+import axios from "axios";
+
 export default function Landing() {
-  // 🔹 Mock data (DB-ready)
-  const stats = {
-    totalDevelopers: 1240,
-    totalSubmissions: 386,
-    totalVotes: 8421,
-  };
+  const [stats, setStats] = useState({
+    totalDevelopers: 0,
+    totalSubmissions: 0,
+    totalVotes: 0,
+  });
 
-  const leaderboard = [
-    { username: "Alice", level: 6, xp: 1420 },
-    { username: "Bob", level: 5, xp: 1180 },
-    { username: "Charlie", level: 4, xp: 940 },
-  ];
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+  axios.get("/api/landing")
+    .then(res => {
+      console.log("LANDING API RESPONSE:", res.data);
+
+      const safeStats = {
+        totalDevelopers: res.data?.stats?.totalDevelopers ?? 0,
+        totalSubmissions: res.data?.stats?.totalSubmissions ?? 0,
+        totalVotes: res.data?.stats?.totalVotes ?? 0,
+      };
+
+      setStats(safeStats);
+      setLeaderboard(res.data?.leaderboard ?? []);
+    })
+    .catch(err => {
+      console.error("Landing API error:", err);
+    })
+    .finally(() => setLoading(false));
+}, []);
+
+  if (loading) {
+    return <p style={{ padding: "2rem" }}>Loading platform stats…</p>;
+  }
   return (
     <div style={{ padding: "2rem" }}>
 
       {/* HERO SECTION */}
       <section style={{ textAlign: "center", marginBottom: "4rem" }}>
         <h1 style={{ fontSize: "2.8rem", marginBottom: "1rem" }}>
-          🎮 DDVS Arena
+          DDVS Arena
         </h1>
         <p style={{ fontSize: "1.2rem", maxWidth: "700px", margin: "0 auto" }}>
-          A decentralized arena where developers compete, collaborate,
-          and earn reputation through community voting.
+          A decentralized platform where developers prove skill through
+          verified contributions and community voting.
         </p>
       </section>
 
-      {/* LIVE STATS BAR */}
+      {/* LIVE STATS */}
       <section
         style={{
           display: "grid",
@@ -42,7 +64,7 @@ export default function Landing() {
 
       {/* HOW IT WORKS */}
       <section style={{ marginBottom: "4rem" }}>
-        <h2>🕹️ How the Game Works</h2>
+        <h2>How DDVS Works</h2>
 
         <div
           style={{
@@ -54,26 +76,26 @@ export default function Landing() {
         >
           <GameStep
             title="Submit Work"
-            text="Upload a project or GitHub repository to the arena."
+            text="Submit a GitHub repository or project for verification."
           />
           <GameStep
-            title="Community Votes"
-            text="Other developers spend votes on quality work."
+            title="Community Review"
+            text="Other developers vote based on quality and authenticity."
           />
           <GameStep
-            title="Earn XP"
-            text="Votes convert into XP. No votes, no XP."
+            title="Earn Reputation"
+            text="Votes convert into XP and reputation points."
           />
           <GameStep
             title="Level Up"
-            text="Gain levels, prestige, and on-chain badges."
+            text="Grow your profile with verified progress."
           />
         </div>
       </section>
 
       {/* LEADERBOARD */}
       <section style={{ marginBottom: "4rem" }}>
-        <h2>🏆 Top Players</h2>
+        <h2>Top Developers</h2>
 
         <div style={{ marginTop: "1.5rem" }}>
           {leaderboard.map((user, index) => (
@@ -96,7 +118,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* CALL TO ACTION */}
+      {/* CTA */}
       <section style={{ textAlign: "center" }}>
         <button
           disabled
@@ -110,12 +132,13 @@ export default function Landing() {
             cursor: "not-allowed",
           }}
         >
-          🔐 Connect Wallet to Enter Arena
+          Connect Wallet to Get Started
         </button>
         <p style={{ marginTop: "1rem", opacity: 0.7 }}>
-          Wallet connection coming in Phase 4
+          Wallet authentication required to participate
         </p>
       </section>
+
     </div>
   );
 }

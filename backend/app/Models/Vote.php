@@ -17,8 +17,19 @@ class Vote extends Model
         return $this->belongsTo(Submission::class);
     }
 
-    public function voter(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'voter_id');
-    }
+    public function voters()
+{
+    return $this->belongsToMany(
+        User::class,
+        'votes',
+        'submission_id',
+        'voter_id'
+    );
+}
+
+    public function votes()
+{
+    return $this->hasMany(Vote::class);
+}
+
 }

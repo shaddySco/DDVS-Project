@@ -41,10 +41,15 @@ class SubmissionController extends Controller
      */
     public function index(): JsonResponse
     {
-        $submissions = Submission::withCount('votes')
-            ->with('author:id,wallet_address,xp')
-            ->latest()
-            ->get();
+       $submissions = Submission::withCount([
+        'votes',
+        'comments',
+        'reposts'
+    ])
+->with('author:id,username,wallet_address,xp')
+    ->latest()
+    ->get();
+
 
         return response()->json($submissions);
     }
@@ -76,6 +81,7 @@ class SubmissionController extends Controller
             ->get();
 
         return response()->json($submissions);
+
     }
 
 

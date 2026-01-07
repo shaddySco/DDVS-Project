@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth; // <--- MAKE SURE THIS IS HERE
+use Illuminate\Support\Facades\Hash;
 
 
 class AuthController extends Controller
@@ -28,9 +30,22 @@ class AuthController extends Controller
     ]);
 }
 
-    public function me(Request $request)
+  public function me()
 {
-    return response()->json($request->user());
+    $user = Auth::user();
+
+    if (!$user) {
+        return response()->json([
+            'message' => 'Unauthenticated'
+        ], 401);
+    }
+
+    return response()->json([
+        'id' => $user->id,
+        'wallet_address' => $user->wallet_address,
+        'xp' => $user->xp,
+        'level' => $user->level,
+    ]);
 }
 
 }

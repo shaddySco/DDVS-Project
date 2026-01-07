@@ -38,6 +38,7 @@ class Kernel extends HttpKernel
             // ❌ DO NOT put wallet auth here
             // ❌ DO NOT put auth:sanctum here
             // ❌ DO NOT put custom auth here
+\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
 
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
@@ -63,5 +64,12 @@ class Kernel extends HttpKernel
         // ✅ Wallet middleware REGISTERED but NOT ACTIVE
         'wallet.auth' => \App\Http\Middleware\WalletAuth::class,
     ];
+
+    protected $middlewareAliases = [
+    'auth' => \App\Http\Middleware\Authenticate::class,
+    'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
+    'auth.session' => \Illuminate\Session\Middleware\AuthenticateSession::class,
+];
+
 }
 

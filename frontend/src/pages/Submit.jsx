@@ -1,77 +1,135 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import axios from "../lib/axios";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
+import "./Submit.css"; // Import the CSS file we just created
 
 export default function Submit() {
-  const [title, setTitle] = useState("");
-  const [repositoryUrl, setRepositoryUrl] = useState("");
-  const [description, setDescription] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { walletAddress } = useAuth();
+  const navigate = useNavigate();
 
-  async function handleSubmit(e) {
+  const [form, setForm] = useState({
+    title: "",
+    category: "Machine Learning", // New Field added
+    description: "",
+    repository_url: "",
+    media: null,
+  });
+
+  const [preview, setPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const categories = [
+    "Machine Learning",
+    "Web Development",
+    "Blockchain / Web3",
+    "Cybersecurity",
+    "Mobile Apps",
+    "AI / Data Science",
+    "Other"
+  ];
+
+  useEffect(() => {
+    if (!form.media) {
+      setPreview(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(form.media);
+    setPreview(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [form.media]);
+
+  if (!walletAddress) {
+    return (
+      <div className="submit-container" style={{textAlign: 'center', marginTop: '100px'}}>
+        <h2>Please connect your wallet to submit a project.</h2>
+      </div>
+    );
+  }
+
+  const handleChange = (e) => {
+    const { name, value, files } = e.target;
+    setForm({ ...form, [name]: files ? files[0] : value });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
+
+    const data = new FormData();
+    Object.entries(form).forEach(([k, v]) => {
+      if (v) data.append(k, v);
+    });
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/submissions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({
-          title,
-          repository_url: repositoryUrl,
-          description,
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error("Submission failed");
-      }
-
-      alert("Submission created successfully");
+      await axios.post("/submissions", data);
+      navigate("/community");
     } catch (err) {
-      alert(err.message);
+      setError("Submission failed. Please check all fields.");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <div>
-      <h1>🔥 Submit Your Work</h1>
+    <div className="submit-container">
+      <div className="submit-header">
+        <h1>Submit your <span>Masterpiece</span></h1>
+        <p>Share your verified work with the DDVS ecosystem.</p>
+      </div>
 
-      <form
-        onSubmit={handleSubmit}
-        style={{ maxWidth: "500px", marginTop: "2rem" }}
-      >
-        <label>Project Title</label>
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-          style={{ width: "100%", marginBottom: "1rem" }}
-        />
+      <form onSubmit={handleSubmit} className="submit-card">
+        {/* Left Side: Text Details */}
+        <div className="submit-form-section">
+          <div className="form-group">
+            <label>Project Title</label>
+            <input name="title" placeholder="e.g. Neural Network Optimizer" onChange={handleChange} required />
+          </div>
 
-        <label>Repository / Project Link</label>
-        <input
-          value={repositoryUrl}
-          onChange={(e) => setRepositoryUrl(e.target.value)}
-          required
-          placeholder="https://github.com/username/project"
-          style={{ width: "100%", marginBottom: "1rem" }}
-        />
+          <div className="form-group">
+            <label>Project Category</label>
+            <select name="category" onChange={handleChange}>
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
 
-        <label>Description</label>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          required
-          style={{ width: "100%", marginBottom: "1rem" }}
-        />
+          <div className="form-group">
+            <label>Repository URL</label>
+            <input name="repository_url" type="url" placeholder="https://github.com/user/repo" onChange={handleChange} required />
+          </div>
 
-        <button type="submit" disabled={loading}>
-          {loading ? "Submitting..." : "Submit"}
-        </button>
+          <div className="form-group">
+            <label>Description</label>
+            <textarea name="description" rows="5" placeholder="What makes this project special?" onChange={handleChange} required />
+          </div>
+        </div>
+
+        {/* Right Side: Media & Button */}
+        <div className="submit-media-section">
+          <div className="form-group">
+            <label>Project Thumbnail</label>
+            <div className="upload-box">
+              <input 
+                type="file" 
+                name="media" 
+                accept="image/*" 
+                onChange={handleChange} 
+                style={{opacity: 0, position: 'absolute', width: '100%', height: '100%', cursor: 'pointer'}} 
+              />
+              {preview ? <img src={preview} alt="Preview" /> : <span>Click to upload image</span>}
+            </div>
+          </div>
+
+          {error && <div className="error-msg">{error}</div>}
+
+          <button className="submit-btn" disabled={loading}>
+            {loading ? "PUBLISHING..." : "PUBLISH PROJECT"}
+          </button>
+        </div>
       </form>
     </div>
   );

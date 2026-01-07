@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Layout from "../layout/layout";
+import Layout from "../layout/Layout";
 import ProtectedRoute from "./ProtectedRoute";
 
 import Landing from "../pages/Landing";
@@ -15,16 +15,10 @@ export default function AppRouter() {
     <BrowserRouter>
       <Routes>
         <Route element={<Layout />}>
-
-          {/* Public routes */}
           <Route path="/" element={<Landing />} />
           <Route path="/community" element={<Community />} />
           <Route path="/project/:id" element={<SubmissionDetail />} />
 
-          {/* ✅ Phase 7.4 public verifier route */}
-          <Route path="/verify/:id" element={<PublicVerification />} />
-
-          {/* Protected routes */}
           <Route
             path="/submit"
             element={
@@ -45,6 +39,8 @@ export default function AppRouter() {
 
           <Route path="/profile/:wallet" element={<Profile />} />
 
+          {/* ✅ PUBLIC VERIFICATION ROUTE */}
+          <Route path="/verify/:id" element={<PublicVerification />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -24,9 +24,10 @@ export function AuthProvider({ children }) {
       setWalletAddress(address);
 
       // 🔐 Login to backend
-      const res = await axios.post("/auth/login", {
-        wallet_address: address,
-      });
+   const res = await axios.post("/api/auth/login", {
+  wallet_address: address,
+});
+
 
       const { user, token } = res.data;
 
@@ -60,7 +61,7 @@ export function AuthProvider({ children }) {
       ] = `Bearer ${token}`;
 
       try {
-        const res = await axios.get("/auth/me");
+        const res = await axios.get("/api/auth/me");
         setUser(res.data);
         setWalletAddress(res.data.wallet_address);
       } catch (error) {
