@@ -109,13 +109,22 @@ export default function Dashboard() {
       )}
 
       {/* Stats Section */}
-      <div className="stats-container">
-        <div className="stat-card">🏆 Level: 3</div>
-        <div className="stat-card">⭐ XP: {user?.xp}</div>
-        <div className="stat-card">👥 Followers: 12</div>
-      </div>
+    {/* Dashboard.jsx - Stats Section */}
 
-      {/* Your Existing "My Submissions" Section goes here */}
-    </div>
+<div className="stats-container">
+  <div className="stat-card">🏆 Level: {user?.level}</div>
+  <div className="stat-card">⭐ XP: {user?.xp || 0}</div>
+  
+  {/* Dynamic Followers Count */}
+  <div className="stat-card">
+    👥 Followers: {user?.followers_count || 0}
+  </div>
+  
+  {/* Dynamic Following Count */}
+  <div className="stat-card">
+    ➡️ Following: {user?.following_count || 0}
+  </div>
+</div>
+    </div>                
   );
 }

@@ -2,254 +2,145 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "../lib/axios";
 import CommentSection from "../components/CommentSection";
-
+import "./Community.css"; // Import the fancy CSS
 
 export default function Community() {
   const [submissions, setSubmissions] = useState([]);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("following");
+  const [activeTab, setActiveTab] = useState("global"); // Default to global if following is empty
   const [expandedComments, setExpandedComments] = useState(null);
   const [loading, setLoading] = useState(true);
- const repostSubmission = async (id) => {
-  try {
-    await axios.post(`/api/submissions/${id}/repost`);
 
-    setSubmissions((prev) =>
-      prev.map((sub) =>
-        sub.id === id
-          ? {
-              ...sub,
-              reposts_count: (sub.reposts_count ?? 0) + 1,
-            }
-          : sub
-      )
-    );
-  } catch (err) {
-    if (err.response?.status === 401) {
-      alert("You must be logged in to repost.");
-    } else if (err.response?.status === 409) {
-      alert("You already reposted this submission.");
-    } else {
-      console.error("Repost failed:", err);
+  // --- Functions ---
+  const repostSubmission = async (id) => {
+    try {
+      await axios.post(`/api/submissions/${id}/repost`);
+      setSubmissions((prev) =>
+        prev.map((sub) => sub.id === id ? { ...sub, reposts_count: (sub.reposts_count ?? 0) + 1 } : sub)
+      );
+    } catch (err) {
+      alert(err.response?.status === 409 ? "Already reposted!" : "Action failed");
     }
-  }
-};
+  };
 
-const updateRepostCount = (id, newCount) => {
-  setSubmissions((prev) =>
-    prev.map((sub) =>
-      sub.id === id
-        ? { ...sub, reposts_count: newCount }
-        : sub
-    )
-  );
-};
-const voteSubmission = async (id) => {
-  try {
-    const res = await axios.post("/api/votes", {
-      submission_id: id,
-      type: "up",
-    });
-
-    setSubmissions((prev) =>
-      prev.map((sub) =>
-        sub.id === id
-          ? {
-              ...sub,
-              total_votes: res.data.total_votes,
-              has_voted: true,
-            }
-          : sub
-      )
-    );
-  } catch (err) {
-    if (err.response?.status === 401) {
-      alert("You must be logged in to vote.");
-    } else if (err.response?.status === 409) {
-      alert("You already voted on this submission.");
-    } else {
-      console.error("Vote failed:", err);
+  const voteSubmission = async (id) => {
+    try {
+      const res = await axios.post("/api/votes", { submission_id: id, type: "up" });
+      setSubmissions((prev) =>
+        prev.map((sub) => sub.id === id ? { ...sub, total_votes: res.data.total_votes, has_voted: true } : sub)
+      );
+    } catch (err) {
+      alert(err.response?.status === 409 ? "Already voted!" : "Login to vote");
     }
-  }
-};
+  };
 
-
-
-
- useEffect(() => {
-  setLoading(true);
-
-  axios
-    .get("/api/community", {
-      params: {
-        type: activeTab,
-        search,
-      },
-    })
-    .then((res) => {
-      const data = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data?.data)
-        ? res.data.data
-        : [];
-
-      setSubmissions(data);
-    })
-    .catch((err) => {
-      console.error("Community feed error:", err);
-      setSubmissions([]);
-    })
-    .finally(() => setLoading(false));
-}, [activeTab, search]);
+  useEffect(() => {
+    setLoading(true);
+    axios.get("/api/community", { params: { type: activeTab, search } })
+      .then((res) => {
+        const data = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+        setSubmissions(data);
+      })
+      .catch(() => setSubmissions([]))
+      .finally(() => setLoading(false));
+  }, [activeTab, search]);
 
   return (
-    <div style={{ padding: "2rem", maxWidth: "900px", margin: "0 auto" }}>
-      <h1>🌍 Community</h1>
-      <p>Discover verified work from the DDVS ecosystem</p>
+    <div className="community-container">
+      <header className="community-header">
+        <h1>🌍 Community</h1>
+        <p>Discover verified work from the DDVS ecosystem</p>
+      </header>
 
       {/* SEARCH + TABS */}
-      <div style={{ display: "flex", gap: "1rem", marginTop: "1.5rem" }}>
+      <div className="controls-wrapper">
         <input
-          placeholder="Search developers or submissions..."
+          className="search-input"
+          placeholder="Search projects, categories or developers..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={{ flex: 1, padding: "0.6rem" }}
         />
-
-        <button
+        <button 
+          className={`tab-btn ${activeTab === "following" ? "active" : ""}`}
           onClick={() => setActiveTab("following")}
-          disabled={activeTab === "following"}
-        >
-          Following
-        </button>
-
-        <button
+        >Following</button>
+        <button 
+          className={`tab-btn ${activeTab === "global" ? "active" : ""}`}
           onClick={() => setActiveTab("global")}
-          disabled={activeTab === "global"}
-        >
-          Global
-        </button>
+        >Global</button>
       </div>
 
       {/* FEED */}
-      <div style={{ marginTop: "2rem" }}>
-        {loading && <p>Loading feed…</p>}
-
-        {!loading && submissions.length === 0 && (
-          <p style={{ opacity: 0.7 }}>
-            No submissions found for this feed.
-          </p>
-        )}
-
-        {!loading &&
+      <div className="feed-list">
+        {loading ? (
+          <div style={{textAlign: 'center', padding: '40px'}}>Loading amazing projects...</div>
+        ) : submissions.length === 0 ? (
+          <div style={{textAlign: 'center', padding: '40px', color: '#64748b'}}>
+            No projects found. Be the first to submit!
+          </div>
+        ) : (
           submissions.map((sub) => (
-            <div
-            key={sub.feed_id}
-              style={{
-                border: "1px solid #ddd",
-                borderRadius: "10px",
-                padding: "1.2rem",
-                marginBottom: "1.5rem",
-              }}
-            >
-              {/* REPOST LABEL */}
+            <div key={sub.feed_id || sub.id} className="submission-card">
+              
+              {/* Repost Header */}
               {sub.is_repost && (
-                <p style={{ fontSize: "0.8rem", opacity: 0.7 }}>
+                <div className="repost-indicator">
                   🔁 Reposted by {sub.reposted_by}
-                </p>
-              )}
-
-              {/* TITLE */}
-              <h3>
-                <Link to={`/project/${sub.id}`}>{sub.title}</Link>
-              </h3>
-
-              {/* AUTHOR */}
-             <p>
-  by{" "}
-  <Link to={`/profile/${sub.user_id}`}>
-    User #{sub.user_id}
-  </Link>
-</p>
-
-              {/* TAGS */}
-              {Array.isArray(sub.tags) && (
-                <div style={{ margin: "0.5rem 0" }}>
-                  {sub.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      style={{
-                        fontSize: "0.75rem",
-                        background: "#eee",
-                        padding: "0.2rem 0.5rem",
-                        borderRadius: "4px",
-                        marginRight: "0.4rem",
-                      }}
-                    >
-                      #{tag}
-                    </span>
-                  ))}
                 </div>
               )}
 
-           {/* ACTION BAR */}
-<div
-  style={{
-    display: "flex",
-    justifyContent: "space-between",
-    marginTop: "1rem",
-    alignItems: "center",
-  }}
->
-  <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-  <button
-  onClick={() => voteSubmission(sub.id)}
-  disabled={sub.has_voted}
-  style={{
-    background: sub.has_voted ? "#ffd966" : "#f3f3f3",
-    border: "1px solid #ccc",
-    padding: "0.3rem 0.6rem",
-    borderRadius: "6px",
-    cursor: sub.has_voted ? "not-allowed" : "pointer",
-  }}
->
-  👍 {sub.has_voted ? "Voted" : "Vote"}
-</button>
+              {/* Title & Category Row */}
+              <Link to={`/project/${sub.id}`} className="card-title">
+                {sub.title}
+              </Link>
+              
+              <div className="card-meta">
+                <span className="field-badge">{sub.category || "Machine Learning"}</span>
+                <span style={{color: '#94a3b8'}}>•</span>
+                <span style={{color: '#64748b', fontSize: '0.9rem'}}>
+                  by <Link to={`/profile/${sub.user_id}`} className="author-link">
+                    {sub.author_name || `User #${sub.user_id}`}
+                  </Link>
+                </span>
+              </div>
 
+              {/* Action Bar */}
+              <div className="action-bar">
+                <div className="action-btns">
+                  <button 
+                    onClick={() => voteSubmission(sub.id)}
+                    className={`btn-action ${sub.has_voted ? 'voted' : ''}`}
+                    disabled={sub.has_voted}
+                  >
+                    👍 {sub.has_voted ? "Voted" : "Upvote"}
+                  </button>
 
+                  <button 
+                    className="btn-action"
+                    onClick={() => setExpandedComments(expandedComments === sub.id ? null : sub.id)}
+                  >
+                    💬 {sub.comments_count ?? 0}
+                  </button>
 
-    <button
-      onClick={() =>
-        setExpandedComments(
-          expandedComments === sub.id ? null : sub.id
-        )
-      }
-    >
-      💬 Comment
-    </button>
+                  <button className="btn-action" onClick={() => repostSubmission(sub.id)}>
+                    🔁 {sub.reposts_count ?? 0}
+                  </button>
+                </div>
 
-    <span style={{ fontSize: "0.85rem", opacity: 0.8 }}>
-      💬 {sub.comments_count ?? 0}{" "}
-      {sub.comments_count === 1 ? "comment" : "comments"}
-    </span>
+                <div className="vote-count">
+                  ⭐ {sub.total_votes ?? 0} Votes
+                </div>
+              </div>
 
-    <button onClick={() => repostSubmission(sub.id)}>
-      🔁 {sub.reposts_count ?? 0}
-    </button>
-  </div>
-
-  <strong>
-    ⭐ Total Votes: {sub.total_votes ?? 0}
-  </strong>
-</div>
-
-
-              {/* COMMENTS */}
+              {/* Comments Section */}
               {expandedComments === sub.id && (
-                <CommentSection submissionId={sub.id} />
+                <div style={{marginTop: '20px'}}>
+                  <CommentSection submissionId={sub.id} />
+                </div>
               )}
             </div>
-          ))}
+          ))
+        )}
       </div>
     </div>
   );

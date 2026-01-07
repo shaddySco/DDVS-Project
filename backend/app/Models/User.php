@@ -5,64 +5,101 @@ namespace App\Models;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Laravel\Sanctum\HasApiTokens;   // ✅ CORRECT
-use App\Models\Submission;
-use App\Models\Vote;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory;   // ✅ CORRECT
+    use HasApiTokens, HasFactory;
+
+    // This ensures 'level' is included when the user is sent to React
+    protected $appends = ['level', 'followers_count', 'following_count'];
 
     protected $fillable = [
-        'wallet_address',
-        'username',
-        'xp',
+        'wallet_address', 
+        'username', 
+        'xp', 
+        'bio', 
+        'developer_type', 
+        'skills'
     ];
 
-    public function submissions(): HasMany
-    {
-        return $this->hasMany(Submission::class);
-    }
+    /**
+     * ATTRIBUTES
+     */
 
-    public function votes(): HasMany
-    {
-        return $this->hasMany(Vote::class, 'voter_id');
-    }
-
+    // Calculate level based on XP (100 XP per level)
     public function getLevelAttribute(): int
     {
         return intdiv($this->xp, 100) + 1;
     }
 
+    // Logic for Dispute resolution (Level 5 requirement)
     public function canResolveDisputes(): bool
+    {
+        return $this->level >= 5;
+    }
+
+    /**
+     * RELATIONSHIPS
+     */
+
+    // Submissions authored by this user
+    public function submissions(): HasMany
+    {
+        return $this->hasMany(Submission::class, 'user_id');
+    }
+
+    // Votes cast by this user
+    public function votes(): HasMany
+    {
+        // Matches the 'user_id' column we fixed in your migrations
+        return $this->hasMany(Vote::class, 'user_id');
+    }
+
+    public function comments(): HasMany 
+    {
+        return $this->hasMany(Comment::class);
+    }
+
+    public function reposts(): HasMany 
+    {
+        return $this->hasMany(Repost::class);
+    }
+
+    /**
+     * SOCIAL / FOLLOW SYSTEM
+     */
+
+    // Users who follow this user
+    public function followers(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            User::class, 
+            'followers', 
+            'user_id',       // The ID of the person being followed
+            'follower_id'    // The ID of the person doing the following
+        );
+    }
+
+    // Users this user is following
+    public function following(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            User::class, 
+            'followers', 
+            'follower_id',   // The ID of the person doing the following (you)
+            'user_id'        // The ID of the person being followed
+        );
+    }
+
+    public function getFollowersCountAttribute(): int
 {
-    $level = floor($this->xp / 100) + 1;
-    return $level >= 5;
-}
-public function comments() {
-    return $this->hasMany(Comment::class);
+    return $this->followers()->count();
 }
 
-public function followers() {
-    return $this->belongsToMany(
-        User::class,
-        'followers',
-        'followed_id',
-        'follower_id'
-    );
-}
-
-// In User.php
-
-public function following()
+public function getFollowingCountAttribute(): int
 {
-    // follower_id = the person doing the following (you)
-    // user_id = the person being followed
-    return $this->belongsToMany(User::class, 'followers', 'follower_id', 'user_id');
+    return $this->following()->count();
 }
-public function reposts() {
-    return $this->hasMany(Repost::class);
-}
-
-
 }
