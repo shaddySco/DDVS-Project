@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useParams, Link } from "react-router-dom";
 
 export default function Project() {

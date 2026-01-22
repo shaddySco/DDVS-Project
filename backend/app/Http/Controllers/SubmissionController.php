@@ -1,120 +1,118 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Models\Submission;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Symfony\Component\HttpFoundation\Response;
-use App\Services\AttestationService;
 
 class SubmissionController extends Controller
 {
-    /**
-     * Store a new submission
-     */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request)
     {
+        // 1. Validation
         $request->validate([
-            'title'          => 'required|string|max:255',
-            'description'    => 'required|string',
+            'title' => 'required|string',
+            'category' => 'required|string',
+            'description' => 'required|string',
             'repository_url' => 'required|url',
+            'media' => 'required|image|max:2048' // Changed to required for your masterpiece
         ]);
 
+        // 2. Handle File Upload
+        $path = null;
+        if ($request->hasFile('media')) {
+            $path = $request->file('media')->store('projects', 'public');
+        }
+
+        // 3. Create Database Entry
         $submission = Submission::create([
-            'user_id'          => Auth::id(),
-            'title'            => $request->title,
-            'description'      => $request->description,
-            'repository_url'   => $request->repository_url,
-            'ownership_status' => 'unverified',
+            'user_id' => Auth::id(), // Automatically get the logged-in user ID
+            'title' => $request->title,
+            'category' => $request->category,
+            'description' => $request->description,
+            'repository_url' => $request->repository_url,
+            'media_path' => $path,
         ]);
 
-        return response()->json(
-            $submission,
-            Response::HTTP_CREATED
-        );
+        // 4. Return the ID (The frontend needs this to register on Blockchain)
+        return response()->json([
+            'status' => 'success',
+            'id' => $submission->id,
+            'project' => $submission
+        ], 201);
+        
     }
 
-    /**
-     * Community feed (public)
-     */
-    public function index(): JsonResponse
+    public function verify(Request $request, $id)
     {
-       $submissions = Submission::withCount([
-        'votes',
-        'comments',
-        'reposts'
-    ])
-->with('author:id,username,wallet_address,xp')
-    ->latest()
-    ->get();
-
-
-        return response()->json($submissions);
+        $submission = Submission::findOrFail($id);
+        $submission->update(['transaction_hash' => $request->tx_hash]);
+        return response()->json(['status' => 'verified']);
     }
 
-    /**
-     * Single submission view
-     */
-    public function show(Submission $submission): JsonResponse
-    {
-        $submission->load([
-            'author:id,wallet_address,xp',
-            'votes'
-        ]);
-
-        return response()->json($submission);
-    }
-
-    /**
-     * Authenticated user's submissions
-     */
-    public function mySubmissions(): JsonResponse
-    {
-        $submissions = Submission::where(
-                'user_id',
-                Auth::id()
-            )
-            ->withCount('votes')
-            ->latest()
-            ->get();
-
-        return response()->json($submissions);
-
-    }
-
-
-public function verify(Submission $submission): JsonResponse
+    public function show($id)
 {
-    // Phase 6 — ownership verification
-    $submission->ownership_status = 'verified';
-    $submission->verified_at = now();
-    $submission->save();
+    // Find project and include the author's details
+    $submission = Submission::with('user')->find($id);
 
-    // Phase 7.3 — deterministic attestation
-    $attestationHash = app(AttestationService::class)->generate(
-        $submission->user->wallet_address,
-        $submission->id,
-        $submission->verified_at,
-        $submission->repository_url
-    );
+    if (!$submission) {
+        return response()->json(['message' => 'Project not found'], 404);
+    }
 
-    $submission->attestation_hash = $attestationHash;
-    $submission->save();
-
+    // Format the response to match your frontend needs
     return response()->json([
-        'message' => 'Submission verified and attested',
-        'attestation_hash' => $attestationHash,
+        'id' => $submission->id,
+        'title' => $submission->title,
+        'category' => $submission->category,
+        'description' => $submission->description,
+        'repo_url' => $submission->repo_url ?? $submission->repository_url,
+        'author_name' => $submission->user->username ?? $submission->user->name,
+        'user_id' => $submission->user_id,
+        'media_url' => $submission->media_path ? asset('storage/' . $submission->media_path) : null,
+        'transaction_hash' => $submission->transaction_hash,
+        'created_at' => $submission->created_at->toFormattedDateString(),
     ]);
 }
 
+    public function index(Request $request)
+{
+    $query = Submission::with('user'); // Assumes a 'user' relationship in Submission model
 
-    /**
-     * Alias endpoint (optional, safe)
-     */
-    public function mine(): JsonResponse
-    {
-        return $this->mySubmissions();
+    // Handle search if provided
+    if ($request->has('search')) {
+        $search = $request->search;
+        $query->where(function($q) use ($search) {
+            $q->where('title', 'like', "%$search%")
+              ->orWhere('category', 'like', "%$search%");
+        });
     }
+
+    // Handle Tabs (Following vs Global)
+    if ($request->type === 'following' && auth()->check()) {
+        // If you have a followers system, filter here. 
+        // For now, let's just return nothing or a subset to show it works.
+        $submissions = $query->whereIn('user_id', auth()->user()->following()->pluck('id'))->latest()->get();
+    } else {
+        // Global: return everything
+        $submissions = $query->latest()->get();
+    }
+
+    // Format the data to match your frontend keys (sub.author_name, etc.)
+    $formatted = $submissions->map(function($sub) {
+        return [
+            'id' => $sub->id,
+            'title' => $sub->title,
+            'category' => $sub->category,
+            'description' => $sub->description,
+            'author_name' => $sub->user->name ?? 'Unknown Developer',
+            'user_id' => $sub->user_id,
+            'total_votes' => $sub->votes_count ?? 0, // You can add counts later
+            'comments_count' => $sub->comments_count ?? 0,
+            'reposts_count' => $sub->reposts_count ?? 0,
+            'has_voted' => false, // Check if current user voted
+        ];
+    });
+
+    return response()->json($formatted);
+}
 }

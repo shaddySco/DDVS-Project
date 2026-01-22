@@ -11,18 +11,25 @@ use Illuminate\Support\Facades\DB;
 
 class CommunityController extends Controller
 {
-    /**
-     * MAIN COMMUNITY FEED
-     *
-     * Returns a unified feed of:
-     * - Original submissions
-     * - Reposts (clearly marked)
-     *
-     * Supports:
-     * - Global feed
-     * - Following feed
-     * - Pagination
-     */
+   
+
+public function index(Request $request) {
+    $submissions = Submission::with('user')->latest()->get();
+
+    return $submissions->map(function($sub) {
+        return [
+            'id' => $sub->id,
+            'title' => $sub->title,
+            'category' => $sub->category,
+            'repo_url' => $sub->repository_url, // 👈 MAKE SURE THIS IS HERE
+            'author_name' => $sub->user->username ?? $sub->user->name,
+            'user_id' => $sub->user_id,
+            'total_votes' => $sub->votes_count ?? 0,
+            // ...
+        ];
+    });
+}
+  
 public function feed(Request $request)
 {
     $user = $request->user();

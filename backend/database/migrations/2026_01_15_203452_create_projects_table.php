@@ -11,15 +11,14 @@ return new class extends Migration
      */
     public function up(): void
 {
-    Schema::create('submissions', function (Blueprint $table) {
+    Schema::create('projects', function (Blueprint $table) {
         $table->id();
-        $table->foreignId('user_id')->constrained();
+        $table->foreignId('user_id')->constrained()->onDelete('cascade');
         $table->string('title');
         $table->string('category');
         $table->text('description');
         $table->string('repository_url');
-        $table->string('media_path')->nullable();
-        $table->string('transaction_hash')->nullable(); // For blockchain link
+        $table->string('media'); // This stores the image path
         $table->timestamps();
     });
 }
@@ -29,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('submissions');
+        Schema::dropIfExists('projects');
     }
 };

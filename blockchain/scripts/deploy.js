@@ -3,63 +3,68 @@ const fs = require("fs");
 const path = require("path");
 
 async function main() {
-  console.log("Deploying DDVS Contract...");
+  console.log("🚀 Starting Deployment...");
 
-  // 1. Get the Contract Factory
-  const DDVS = await hre.ethers.getContractFactory("DDVS");
-  
-  // 2. Deploy
-  const ddvs = await DDVS.deploy();
-  await ddvs.waitForDeployment(); 
+  // 1. Deploy DDVSSubmissions
+  const Submissions = await hre.ethers.getContractFactory("DDVSSubmissions");
+  const submissions = await Submissions.deploy();
+  await submissions.waitForDeployment();
+  const submissionsAddress = await submissions.getAddress();
+  console.log("✅ DDVSSubmissions deployed to:", submissionsAddress);
 
-  const address = await ddvs.getAddress();
+  // 2. Deploy DDVSAttestation
+  const Attestation = await hre.ethers.getContractFactory("DDVSAttestation");
+  const attestation = await Attestation.deploy();
+  await attestation.waitForDeployment();
+  const attestationAddress = await attestation.getAddress();
+  console.log("✅ DDVSAttestation deployed to:", attestationAddress);
 
-  console.log("----------------------------------------------------");
-  console.log("✅ DDVS Deployed Successfully!");
-  console.log("📍 Contract Address:", address);
-  console.log("----------------------------------------------------");
+  console.log("\n----------------------------------------------------");
+  console.log("🎉 All contracts deployed successfully!");
+  console.log("----------------------------------------------------\n");
 
   // 3. Save Artifacts for Frontend
-  saveFrontendFiles(address);
-
-  
-}
-async function main() {
-  const Attestation = await ethers.getContractFactory("DDVSAttestation");
-  const contract = await Attestation.deploy();
-  await contract.waitForDeployment();
-
-  console.log("DDVSAttestation deployed to:", await contract.getAddress());
+  saveFrontendFiles({
+    DDVSSubmissions: submissionsAddress,
+    DDVSAttestation: attestationAddress,
+  });
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
-
-function saveFrontendFiles(contractAddress) {
-  // We save to the frontend folder so the website can find it
+function saveFrontendFiles(addresses) {
+  // This path assumes your project structure is:
+  // /blockchain
+  // /frontend
   const contractsDir = path.join(__dirname, "..", "..", "frontend", "src", "contracts");
 
   if (!fs.existsSync(contractsDir)) {
     fs.mkdirSync(contractsDir, { recursive: true });
   }
 
+  // Save the addresses
   fs.writeFileSync(
     path.join(contractsDir, "contract-address.json"),
-    JSON.stringify({ DDVS: contractAddress }, undefined, 2)
+    JSON.stringify(addresses, undefined, 2)
   );
+  console.log("📂 Saved contract addresses to frontend.");
 
-  const Artifact = hre.artifacts.readArtifactSync("DDVS");
-  fs.writeFileSync(
-    path.join(contractsDir, "DDVS.json"),
-    JSON.stringify(Artifact, null, 2)
-  );
-  
-  console.log("📂 Artifacts saved to /frontend/src/contracts/");
+  // Save the ABIs
+  Object.keys(addresses).forEach((contractName) => {
+    try {
+        const Artifact = hre.artifacts.readArtifactSync(contractName);
+        fs.writeFileSync(
+          path.join(contractsDir, `${contractName}.json`),
+          JSON.stringify(Artifact, null, 2)
+        );
+        console.log(`📄 Saved ABI for ${contractName} to frontend.`);
+    } catch (e) {
+        console.warn(`⚠️ Could not find artifact for ${contractName}.`);
+    }
+  });
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

@@ -9,16 +9,21 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
-    {
-      Schema::create('followers', function (Blueprint $table) {
-    $table->id();
-    $table->foreignId('follower_id')->constrained('users')->cascadeOnDelete();
-    $table->foreignId('following_id')->constrained('users')->cascadeOnDelete();
-    $table->unique(['follower_id', 'following_id']);
-    $table->timestamps();
-});
-    }
+   public function up(): void
+{
+    Schema::create('followers', function (Blueprint $table) {
+        $table->id();
+        
+        // 1. Define the columns first
+        $table->foreignId('follower_id')->constrained('users')->onDelete('cascade');
+        $table->foreignId('followed_id')->constrained('users')->onDelete('cascade');
+        
+        $table->timestamps();
+
+        // 2. Add the unique constraint so a user can't follow the same person twice
+        $table->unique(['follower_id', 'followed_id']);
+    });
+}
 
     /**
      * Reverse the migrations.

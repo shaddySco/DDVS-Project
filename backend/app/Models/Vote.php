@@ -3,33 +3,19 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Vote extends Model
 {
-    protected $fillable = [
-        'submission_id',
-        'voter_id',
-    ];
+    // Use voter_id to match your migration
+    protected $fillable = ['submission_id', 'voter_id'];
 
-    public function submission(): BelongsTo
+    public function submission()
     {
         return $this->belongsTo(Submission::class);
     }
 
-    public function voters()
-{
-    return $this->belongsToMany(
-        User::class,
-        'votes',
-        'submission_id',
-        'voter_id'
-    );
-}
-
-    public function votes()
-{
-    return $this->hasMany(Vote::class);
-}
-
+    public function voter()
+    {
+        return $this->belongsTo(User::class, 'voter_id');
+    }
 }

@@ -2,68 +2,56 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreVoteRequest;
-use App\Models\Submission;
 use App\Models\Vote;
+use App\Models\Submission;
 use Illuminate\Http\Request;
-use App\Services\ReputationService;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Database\QueryException;
-use Symfony\Component\HttpFoundation\Response;
 
 class VoteController extends Controller
 {
-    protected ReputationService $reputationService;
+    // app/Http/Controllers/VoteController.php
 
-    public function __construct(ReputationService $reputationService)
-    {
-        $this->reputationService = $reputationService;
-    }
-public function store(StoreVoteRequest $request)
+public function store(Request $request)
 {
-    $user = Auth::user();
+    $request->validate(['submission_id' => 'required|exists:submissions,id']);
 
-    if (!$user) {
-        return response()->json([
-            'message' => 'Unauthenticated'
-        ], 401);
+    $voterId = auth()->id();
+    $submissionId = $request->submission_id;
+
+    // 1. Prevent double voting (Check if THIS user already voted on THIS project)
+    $alreadyVoted = Vote::where('submission_id', $submissionId)
+                        ->where('voter_id', $voterId)
+                        ->exists();
+
+    if ($alreadyVoted) {
+        return response()->json(['message' => 'Already voted'], 409);
     }
 
-    $submission = Submission::findOrFail($request->submission_id);
-
-    // Prevent duplicate votes
-    if (Vote::where('user_id', $user->id)
-        ->where('submission_id', $submission->id)
-        ->exists()) {
-        return response()->json([
-            'message' => 'You already voted on this submission'
-        ], 409);
-    }
-
-    // Create vote
+    // 2. Record the vote
     Vote::create([
-        'user_id' => $user->id,
-        'submission_id' => $submission->id,
-        'type' => $request->type,
+        'submission_id' => $submissionId,
+        'voter_id' => $voterId
     ]);
 
-    // Reputation update must NEVER break voting
-    try {
-        app(ReputationService::class)->applyVote($submission, $user);
-    } catch (\Throwable $e) {
-        Log::error('ReputationService failed', [
-            'error' => $e->getMessage(),
-        ]);
+    // 3. Award XP to the Author
+    $submission = Submission::find($submissionId);
+    $author = $submission->user; // 👈 This MUST be the owner of the project
+
+    if ($author) {
+        // We remove the "if voter is not author" check so you can vote for yourself
+        $author->increment('xp', 10); 
+        
+        // Update level logic
+        $author->level = floor($author->xp / 100) + 1;
+        $author->save();
+        
+        // Log it to your terminal to prove it worked
+        \Log::info("XP Awarded: User {$author->id} now has {$author->xp} XP");
     }
 
     return response()->json([
-        'message' => 'Vote recorded successfully',
-        'total_votes' => $submission->votes()->count(),
-        'has_voted' => true,
-    ], 201);
+        'message' => 'Vote recorded!',
+        'total_votes' => Vote::where('submission_id', $submissionId)->count()
+    ]);
 }
-    /**
-     * Cast a vote on a submission.
-     */
 }

@@ -1,14 +1,27 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect } from "react";
+import { ethers } from "ethers"; 
 import axios from "../lib/axios";
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [walletAddress, setWalletAddress] = useState(null);
+  const [signer, setSigner] = useState(null); 
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 🔹 Connect Wallet & Login
+  // 1. Logout Function
+  const logout = () => {
+    setWalletAddress(null);
+    setSigner(null);
+    setUser(null);
+    localStorage.removeItem("ddvs_token");
+    delete axios.defaults.headers.common["Authorization"];
+    console.log("Logged out successfully");
+  };
+
+  // 2. Connect Wallet & Login Function
   const connectWallet = async () => {
     if (!window.ethereum) {
       alert("MetaMask not detected");
@@ -16,36 +29,56 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      const accounts = await window.ethereum.request({
-        method: "eth_requestAccounts",
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signerInstance = await provider.getSigner();
+      const address = await signerInstance.getAddress();
+      
+      setWalletAddress(address);
+      setSigner(signerInstance); 
+
+      // Login to backend
+      const res = await axios.post("/auth/login", {
+        wallet_address: address,
       });
 
-      const address = accounts[0];
-      setWalletAddress(address);
+      const { user: userData, token } = res.data;
 
-      // 🔐 Login to backend
-   const res = await axios.post("/api/auth/login", {
-  wallet_address: address,
-});
-
-
-      const { user, token } = res.data;
-
-      // 🔑 Persist token
       localStorage.setItem("ddvs_token", token);
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
-      // 🔑 Attach token globally
-      axios.defaults.headers.common[
-        "Authorization"
-      ] = `Bearer ${token}`;
-
-      setUser(user);
+      setUser(userData);
+      return userData; // Useful for chaining
     } catch (error) {
       console.error("Wallet connection failed", error);
     }
   };
 
-  // 🔹 Restore auth on refresh
+  // 3. Switch Account Function
+  const switchAccount = async () => {
+    if (!window.ethereum) {
+      alert("MetaMask not detected");
+      return;
+    }
+
+    try {
+      // Force MetaMask to show the account picker UI
+      await window.ethereum.request({
+        method: "wallet_requestPermissions",
+        params: [{ eth_accounts: {} }],
+      });
+
+      // Clear old session data
+      logout();
+
+      // Re-run the connection logic to log in with the NEW account
+      await connectWallet();
+      
+    } catch (error) {
+      console.error("Switch account failed", error);
+    }
+  };
+
+  // 4. Restore Session on Refresh
   useEffect(() => {
     const restoreAuth = async () => {
       const token = localStorage.getItem("ddvs_token");
@@ -55,21 +88,25 @@ export function AuthProvider({ children }) {
         return;
       }
 
-      // 🔑 Re-attach token
-      axios.defaults.headers.common[
-        "Authorization"
-      ] = `Bearer ${token}`;
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
       try {
-        const res = await axios.get("/api/auth/me");
+        const res = await axios.get("/auth/me"); 
         setUser(res.data);
         setWalletAddress(res.data.wallet_address);
+        
+        if (window.ethereum) {
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            const accounts = await provider.listAccounts();
+            if (accounts.length > 0) {
+                const signerInstance = await provider.getSigner();
+                setSigner(signerInstance);
+            }
+        }
       } catch (error) {
         console.error("Auth restore failed", error);
-        localStorage.removeItem("ddvs_token");
-        setUser(null);
+        logout(); // Clean up if token is invalid
       }
-
       setLoading(false);
     };
 
@@ -78,7 +115,17 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ walletAddress, user, connectWallet, loading }}
+      // 🔹 Export ALL functions here so Navbar and Dashboard can use them
+      value={{ 
+        walletAddress, 
+        signer, 
+        user, 
+        setUser, 
+        connectWallet, 
+        logout, 
+        switchAccount, 
+        loading 
+      }}
     >
       {children}
     </AuthContext.Provider>

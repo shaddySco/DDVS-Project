@@ -3,18 +3,20 @@ import { useAuth } from "../context/AuthContext";
 import { useEffect, useRef, useState } from "react";
 
 export default function Navbar() {
-  const { walletAddress, connectWallet, logout } = useAuth();
+  // 1. Pull all necessary functions from AuthContext
+  const { walletAddress, connectWallet, logout, switchAccount } = useAuth();
 
   const [darkMode, setDarkMode] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  /* ---------- Dark Mode ---------- */
+  /* ---------- Dark Mode Logic ---------- */
   useEffect(() => {
     const stored = localStorage.getItem("ddvs-theme");
     if (stored === "dark") {
       document.documentElement.classList.add("dark");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDarkMode(true);
     }
   }, []);
@@ -26,7 +28,18 @@ export default function Navbar() {
     localStorage.setItem("ddvs-theme", isDark ? "dark" : "light");
   };
 
-  /* ---------- Close profile dropdown ---------- */
+  /* ---------- Account Handlers ---------- */
+  const handleSwitch = async () => {
+    setProfileOpen(false);
+    await switchAccount();
+  };
+
+  const handleLogout = () => {
+    setProfileOpen(false);
+    logout();
+  };
+
+  /* ---------- Close dropdown on outside click ---------- */
   useEffect(() => {
     const handler = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -39,7 +52,6 @@ export default function Navbar() {
 
   return (
     <>
-      {/* ---------- STYLES (INLINE, SINGLE FILE) ---------- */}
       <style>
         {`
         :root {
@@ -48,14 +60,16 @@ export default function Navbar() {
           --muted: #6b7280;
           --border: #e5e7eb;
           --primary: #2563eb;
+          --hover: #f9fafb;
         }
 
         .dark {
           --bg: #0f172a;
-          --text: #e5e7eb;
+          --text: #f3f4f6;
           --muted: #9ca3af;
-          --border: #1f2937;
+          --border: #1e293b;
           --primary: #60a5fa;
+          --hover: #1e293b;
         }
 
         .nav {
@@ -74,17 +88,19 @@ export default function Navbar() {
           display: flex;
           align-items: center;
           gap: 0.5rem;
+          text-decoration: none;
         }
 
         .logo {
           color: var(--primary);
           font-weight: bold;
+          font-size: 1.2rem;
         }
 
         .brand-text {
-          text-decoration: none;
-          font-weight: 600;
+          font-weight: 700;
           color: var(--text);
+          letter-spacing: -0.025em;
         }
 
         .links {
@@ -96,10 +112,15 @@ export default function Navbar() {
           text-decoration: none;
           color: var(--muted);
           font-weight: 500;
+          transition: color 0.2s;
         }
 
         .links a.active {
           color: var(--primary);
+        }
+
+        .links a:hover {
+          color: var(--text);
         }
 
         .actions {
@@ -112,110 +133,132 @@ export default function Navbar() {
           background: none;
           border: none;
           cursor: pointer;
-          font-size: 1rem;
+          font-size: 1.1rem;
+          padding: 5px;
+          display: grid;
+          place-items: center;
         }
 
-        .connect {
+        .connect-btn {
           background: var(--primary);
           color: #fff;
           border: none;
-          padding: 0.4rem 0.9rem;
-          border-radius: 6px;
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
           cursor: pointer;
+          font-weight: 600;
+          transition: opacity 0.2s;
         }
 
-        .profile {
+        .connect-btn:hover {
+          opacity: 0.9;
+        }
+
+        .profile-trigger {
           position: relative;
         }
 
         .avatar {
-          width: 32px;
-          height: 32px;
+          width: 34px;
+          height: 34px;
           border-radius: 50%;
           background: var(--primary);
           color: #fff;
           display: grid;
           place-items: center;
-          font-size: 0.8rem;
+          font-size: 0.75rem;
+          font-weight: bold;
           cursor: pointer;
+          border: 2px solid var(--border);
         }
 
-        .dropdown {
+        .dropdown-menu {
           position: absolute;
           right: 0;
-          top: 42px;
+          top: 48px;
           background: var(--bg);
           border: 1px solid var(--border);
-          border-radius: 8px;
-          width: 180px;
+          border-radius: 12px;
+          width: 210px;
           padding: 0.5rem;
-          box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+          box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
 
-        .dropdown a,
-        .dropdown button {
+        .dropdown-info {
+          padding: 0.5rem 0.75rem;
+          border-bottom: 1px solid var(--border);
+          margin-bottom: 0.5rem;
+        }
+
+        .wallet-addr {
+          font-size: 0.75rem;
+          color: var(--muted);
+          font-family: monospace;
+        }
+
+        .dropdown-menu a,
+        .dropdown-menu button {
           width: 100%;
           text-align: left;
-          padding: 0.45rem 0.6rem;
+          padding: 0.6rem 0.75rem;
           background: none;
           border: none;
           color: var(--text);
-          font-size: 0.85rem;
+          font-size: 0.9rem;
           cursor: pointer;
+          border-radius: 6px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          text-decoration: none;
         }
 
-        .logout {
-          color: #ef4444;
+        .dropdown-menu a:hover,
+        .dropdown-menu button:hover {
+          background: var(--hover);
         }
 
-        .wallet {
-          font-size: 0.75rem;
-          color: var(--muted);
-          padding: 0.4rem 0.6rem;
+        .btn-switch {
+          color: var(--primary) !important;
+          font-weight: 500;
+        }
+
+        .btn-logout {
+          color: #ef4444 !important;
+          margin-top: 4px;
         }
 
         .hamburger {
           display: none;
-          font-size: 1.4rem;
+          font-size: 1.5rem;
           background: none;
           border: none;
-          cursor: pointer;
           color: var(--text);
+          cursor: pointer;
         }
 
-        /* ---------- RESPONSIVE ---------- */
-
-        @media (max-width: 700px) {
-          .hamburger {
-            display: block;
-          }
-
+        @media (max-width: 768px) {
+          .hamburger { display: block; }
           .links {
+            display: none;
             position: absolute;
-            top: 64px;
-            left: 0;
-            right: 0;
+            top: 100%;
+            left: 0; right: 0;
             background: var(--bg);
-            border-bottom: 1px solid var(--border);
             flex-direction: column;
             padding: 1rem;
-            display: none;
-            gap: 0.75rem;
+            border-bottom: 1px solid var(--border);
           }
-
-          .links.open {
-            display: flex;
-          }
+          .links.open { display: flex; }
         }
         `}
       </style>
 
-      {/* ---------- NAVBAR ---------- */}
       <nav className="nav">
-        <div className="brand">
+        <Link to="/" className="brand">
           <span className="logo">◆</span>
-          <Link to="/" className="brand-text">DDVS</Link>
-        </div>
+          <span className="brand-text">DDVS</span>
+        </Link>
 
         <button className="hamburger" onClick={() => setMenuOpen(!menuOpen)}>
           ☰
@@ -233,23 +276,36 @@ export default function Navbar() {
           </button>
 
           {walletAddress ? (
-            <div className="profile" ref={dropdownRef}>
+            <div className="profile-trigger" ref={dropdownRef}>
               <div className="avatar" onClick={() => setProfileOpen(!profileOpen)}>
                 {walletAddress.slice(2, 4).toUpperCase()}
               </div>
 
               {profileOpen && (
-                <div className="dropdown">
-                  <div className="wallet">
-                    {walletAddress.slice(0, 6)}…{walletAddress.slice(-4)}
+                <div className="dropdown-menu">
+                  <div className="dropdown-info">
+                    <div style={{fontWeight: 600, fontSize: '0.85rem'}}>Connected Wallet</div>
+                    <div className="wallet-addr">
+                      {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+                    </div>
                   </div>
-                  <Link to="/dashboard">Dashboard</Link>
-                  <button className="logout" onClick={logout}>Logout</button>
+                  
+                  <Link to="/dashboard" onClick={() => setProfileOpen(false)}>
+                    👤 My Dashboard
+                  </Link>
+                  
+                  <button className="btn-switch" onClick={handleSwitch}>
+                    🔄 Switch Account
+                  </button>
+                  
+                  <button className="btn-logout" onClick={handleLogout}>
+                    🔴 Logout
+                  </button>
                 </div>
               )}
             </div>
           ) : (
-            <button className="connect" onClick={connectWallet}>
+            <button className="connect-btn" onClick={connectWallet}>
               Connect Wallet
             </button>
           )}

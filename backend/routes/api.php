@@ -1,99 +1,51 @@
 <?php
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\SubmissionController;
-use App\Http\Controllers\VoteController;
-use App\Http\Controllers\DisputeController;
-use App\Http\Controllers\VerificationController;
-use App\Http\Controllers\PublicVerificationController;
-use App\Http\Controllers\LandingController;
-use App\Http\Controllers\CommunityController;
-use App\Http\Controllers\CommentController;
-use App\Http\Controllers\CommentLikeController;
-use App\Http\Controllers\RepostController;
-use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\{
+    AuthController, SubmissionController, VoteController, DisputeController,
+    VerificationController, PublicVerificationController, LandingController,
+    CommunityController, CommentController, CommentLikeController,
+    RepostController, ProfileController
+};
 
-/*
-|--------------------------------------------------------------------------
-| Authentication
-|--------------------------------------------------------------------------
-*/
-
+/* --- Public Routes --- */
 Route::post('/auth/login', [AuthController::class, 'login']);
-// routes/api.php
-Route::get('/auth/me', [AuthController::class, 'me'])
-    ->middleware('auth:sanctum');
-
-/*
-|--------------------------------------------------------------------------
-| Public Read-Only Routes
-|--------------------------------------------------------------------------
-*/
-
 Route::get('/landing', [LandingController::class, 'stats']);
 Route::get('/community', [CommunityController::class, 'feed']);
 Route::get('/submissions', [SubmissionController::class, 'index']);
 Route::get('/submissions/{id}/comments', [CommentController::class, 'index']);
-
-Route::get('/public/verify/{id}', [PublicVerificationController::class, 'show']);
 Route::get('/verify/{submission}', [PublicVerificationController::class, 'show']);
 
-/*
-|--------------------------------------------------------------------------
-| Authenticated Routes (Sanctum)
-|--------------------------------------------------------------------------
-*/
-
+/* --- Authenticated Routes --- */
 Route::middleware('auth:sanctum')->group(function () {
+    
+    // User Profile
+    Route::get('/me', function (Request $request) {
+        return $request->user();
+    });Route::get('/auth/me', function (Request $request) {
+        return $request->user();
+    });
+    
+    Route::get('/me', function (Request $request) {
+        return $request->user();
+    });
+    Route::put('/user/profile', [ProfileController::class, 'update']);
 
-    // Submissions
+    // Projects / Submissions
     Route::get('/submissions/mine', [SubmissionController::class, 'mySubmissions']);
-    Route::post('/submissions', [SubmissionController::class, 'store']);
+    Route::post('/projects', [SubmissionController::class, 'store']); // Used by Submit.jsx
+    Route::post('/projects/{id}/verify', [SubmissionController::class, 'verify']);
 
-    // Voting
+    // Voting & Interactions
     Route::post('/votes', [VoteController::class, 'store']);
-
-    // Ownership verification
-    Route::post(
-        '/submissions/{submission}/verification-message',
-        [VerificationController::class, 'generateMessage']
-    );
-
-    Route::post(
-        '/submissions/{submission}/verify-ownership',
-        [VerificationController::class, 'verifyOwnership']
-    );
-
-    // Disputes
-    Route::post('/submissions/{submission}/dispute', [DisputeController::class, 'store']);
-    Route::post('/disputes/{dispute}/resolve', [DisputeController::class, 'resolve']);
-
-    // Comments
     Route::post('/comments', [CommentController::class, 'store']);
     Route::post('/comments/{comment}/like', [CommentLikeController::class, 'toggle']);
-
-    // Reposts
     Route::post('/submissions/{submission}/repost', [RepostController::class, 'store']);
 
-    // Profile feed
+    // Social & Verification
     Route::get('/profile/{wallet}/feed', [ProfileController::class, 'feed']);
-});
-
-/*
-|--------------------------------------------------------------------------
-| Public Proof Endpoint
-|--------------------------------------------------------------------------
-*/
-
-Route::get('/submissions/{submission}/proof', function (\App\Models\Submission $submission) {
-    abort_unless($submission->ownership_status === 'verified', 404);
-
-    return response()->json([
-        'submission_id'     => $submission->id,
-        'wallet_address'    => $submission->user->wallet_address,
-        'verified_at'       => $submission->verified_at,
-        'attestation_hash'  => $submission->attestation_hash,
-    ]);
+    Route::post('/submissions/{submission}/verify-ownership', [VerificationController::class, 'verifyOwnership']);
+    Route::post('/submissions/{submission}/dispute', [DisputeController::class, 'store']);
 });

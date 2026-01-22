@@ -6,62 +6,52 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\User;
+
 class Submission extends Model
 {
     protected $fillable = [
-    'user_id',
-    'title',
-    'description',
-    'repository_url',
-    'ownership_status',
+        'user_id', 'title', 'category', 'description', 
+        'repository_url', 'media_path', 'transaction_hash'
+    ];
 
-    'verification_message',
-    'verification_signature',
-    'verification_path',
-    'verified_at',
-];
+    /* =======================
+     | Relationships
+     ======================= */
 
-    public function author()
+  public function user()
+{
+    // Ensure this relationship is defined!
+    return $this->belongsTo(User::class, 'user_id');
+}
+  public function votes()
+{
+    // Specify 'submission_id' if you used a non-standard name, 
+    // but here the standard is fine.
+    return $this->hasMany(Vote::class, 'submission_id');
+}
+
+    public function disputes(): HasMany
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->hasMany(Dispute::class);
     }
 
-    public function votes()
+    public function comments(): HasMany
     {
-        return $this->hasMany(Vote::class);
+        return $this->hasMany(Comment::class);
     }
+
+    public function reposts(): HasMany
+    {
+        return $this->hasMany(Repost::class);
+    }
+
+    /* =======================
+     | State Helpers
+     ======================= */
 
     public function isVerified(): bool
-{
-    return !is_null($this->verified_at)
-        && $this->ownership_status === 'verified';
-}
-
-public function disputes()
-{
-    return $this->hasMany(Dispute::class);
-}
-public function isDisputed(): bool
-{
-    return $this->ownership_status === 'disputed';
-}
-
-public function isInvalidated(): bool
-{
-    return $this->ownership_status === 'invalidated';
-}
-public function user()
-{
-    return $this->belongsTo(User::class);
-}
-public function comments()
-{
-    return $this->hasMany(Comment::class, 'submission_id');
-}
-
-public function reposts() {
-    return $this->hasMany(Repost::class);
-}
-
-}
-
+    {
+        return $this->ownership_status === 'verified'
+            && !is_null($this->ver_);
+    }
+    }

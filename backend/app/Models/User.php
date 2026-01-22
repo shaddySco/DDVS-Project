@@ -15,14 +15,18 @@ class User extends Authenticatable
     // This ensures 'level' is included when the user is sent to React
     protected $appends = ['level', 'followers_count', 'following_count'];
 
-    protected $fillable = [
-        'wallet_address', 
-        'username', 
-        'xp', 
-        'bio', 
-        'developer_type', 
-        'skills'
-    ];
+   protected $fillable = [
+    'name',
+    'email',
+    'password',
+    'wallet_address',
+    'username',
+    'bio',
+    'skills',
+    'developer_type',
+    'xp',      // Ensure this is here
+    'level',   // Ensure this is here
+];
 
     /**
      * ATTRIBUTES
@@ -72,26 +76,31 @@ class User extends Authenticatable
      */
 
     // Users who follow this user
-    public function followers(): BelongsToMany
-    {
-        return $this->belongsToMany(
-            User::class, 
-            'followers', 
-            'user_id',       // The ID of the person being followed
-            'follower_id'    // The ID of the person doing the following
-        );
-    }
+   /**
+ * SOCIAL / FOLLOW SYSTEM
+ */
 
-    // Users this user is following
-    public function following(): BelongsToMany
-    {
-        return $this->belongsToMany(
-            User::class, 
-            'followers', 
-            'follower_id',   // The ID of the person doing the following (you)
-            'user_id'        // The ID of the person being followed
-        );
-    }
+// Users who follow this user
+public function followers(): BelongsToMany
+{
+    return $this->belongsToMany(
+        User::class, 
+        'followers', 
+        'followed_id',   // Column representing the person being followed
+        'follower_id'    // Column representing the person doing the following
+    );
+}
+
+// Users this user is following
+public function following(): BelongsToMany
+{
+    return $this->belongsToMany(
+        User::class, 
+        'followers', 
+        'follower_id',   // Column representing the person doing the following
+        'followed_id'    // Column representing the person being followed
+    );
+}
 
     public function getFollowersCountAttribute(): int
 {
