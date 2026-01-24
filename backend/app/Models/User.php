@@ -13,7 +13,7 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory;
 
     // This ensures 'level' is included when the user is sent to React
-    protected $appends = ['level', 'followers_count', 'following_count'];
+    protected $appends = ['level', 'followers_count', 'following_count', 'display_name', 'focus_sector'];
 
    protected $fillable = [
     'name',
@@ -42,6 +42,41 @@ class User extends Authenticatable
     public function canResolveDisputes(): bool
     {
         return $this->level >= 5;
+    }
+
+    public function getDisplayNameAttribute(): string
+    {
+        if ($this->username) return $this->username;
+        if ($this->name) return $this->name;
+        
+        // Fallback to wallet address slice: 0x1234...5678
+        $addr = $this->wallet_address;
+        if (strlen($addr) > 10) {
+            return substr($addr, 0, 6) . '...' . substr($addr, -4);
+        }
+        return $addr ?? 'Anonymous';
+    }
+
+    public function getFocusSectorAttribute(): string
+    {
+        $lastSubmissions = $this->submissions()
+            ->latest()
+            ->take(3)
+            ->pluck('category');
+
+        if ($lastSubmissions->isEmpty()) return 'Unknown';
+
+        $counts = $lastSubmissions->countBy();
+        return $counts->sortDesc()->keys()->first();
+    }
+
+    public function getSubjectXp(string $category): int
+    {
+        return $this->submissions()
+            ->where('category', $category)
+            ->withCount('votes')
+            ->get()
+            ->sum('votes_count');
     }
 
     /**
@@ -76,20 +111,16 @@ class User extends Authenticatable
      */
 
     // Users who follow this user
-   /**
- * SOCIAL / FOLLOW SYSTEM
- */
-
-// Users who follow this user
-public function followers(): BelongsToMany
-{
-    return $this->belongsToMany(
-        User::class, 
-        'followers', 
-        'followed_id',   // Column representing the person being followed
-        'follower_id'    // Column representing the person doing the following
-    );
-}
+    // Users who follow this user
+    public function followers(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            User::class, 
+            'followers', 
+            'followed_id',   // Column representing the person being followed
+            'follower_id'    // Column representing the person doing the following
+        );
+    }
 
 // Users this user is following
 public function following(): BelongsToMany

@@ -3,7 +3,7 @@ import { ethers } from "ethers";
 import axios from "../lib/axios";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import "./Submit.css";
+import Button from "../components/ui/Button";
 
 // Import the auto-generated files from your deployment script
 import contractAddresses from "../contracts/contract-address.json";
@@ -70,7 +70,9 @@ export default function Submit() {
     formData.append("category", form.category);
     formData.append("description", form.description);
     formData.append("repository_url", form.repository_url);
-    formData.append("media", form.media);
+    if (form.media) {
+      formData.append("media", form.media);
+    }
 
     console.log("Step 2: Sending to Laravel Backend...");
     const res = await axios.post("/projects", formData, {
@@ -114,95 +116,131 @@ export default function Submit() {
 
   if (!walletAddress) {
     return (
-      <div className="submit-container" style={{ textAlign: 'center', marginTop: '100px' }}>
-        <h2>Please connect your wallet to submit a project.</h2>
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="glass-panel p-8 text-center max-w-md">
+           <h2 className="text-2xl font-bold text-white mb-4">Access Restricted</h2>
+           <p className="text-gray-400 mb-6">Please connect your wallet to submit a project to the decentralized registry.</p>
+           {/* Wallet connection is handled in navbar, so we just show message */}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="submit-container">
-      <div className="submit-header">
-        <h1>Submit your <span>Masterpiece</span></h1>
-        <p>Your project will be stored in our database and verified on-chain.</p>
+    <div className="min-h-screen pt-24 pb-12 px-4 md:px-8 max-w-6xl mx-auto">
+      <div className="text-center mb-12">
+        <h1 className="text-5xl font-bold mb-4">
+          Submit your <span className="text-neon-purple text-glow">Masterpiece</span>
+        </h1>
+        <p className="text-gray-400">Your project will be stored in our database and verified on-chain.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="submit-card">
-        <div className="submit-form-section">
-          <div className="form-group">
-            <label>Project Title</label>
-            <input 
-              name="title" 
-              placeholder="e.g. Neural Network Optimizer" 
-              onChange={handleChange} 
-              required 
-            />
-          </div>
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* LEFT COLUMN: FORM INPUTS */}
+        <div className="lg:col-span-2 glass-panel p-8">
+           <div className="space-y-6">
+             <div>
+               <label className="block text-sm text-gray-400 mb-2">Project Title</label>
+               <input 
+                 name="title" 
+                 className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-neon-blue focus:ring-1 focus:ring-neon-blue focus:outline-none transition-all"
+                 placeholder="e.g. Neural Network Optimizer" 
+                 onChange={handleChange} 
+                 required 
+               />
+             </div>
 
-          <div className="form-group">
-            <label>Project Category</label>
-            <select name="category" value={form.category} onChange={handleChange}>
-              {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               <div>
+                 <label className="block text-sm text-gray-400 mb-2">Category</label>
+                 <select 
+                   name="category" 
+                   value={form.category} 
+                   onChange={handleChange}
+                   className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-neon-blue focus:outline-none appearance-none"
+                 >
+                   {categories.map(cat => (
+                     <option key={cat} value={cat}>{cat}</option>
+                   ))}
+                 </select>
+               </div>
+               <div>
+                 <label className="block text-sm text-gray-400 mb-2">Repository URL</label>
+                 <input 
+                   name="repository_url" 
+                   type="url" 
+                   className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-neon-blue focus:outline-none"
+                   placeholder="https://github.com/..." 
+                   onChange={handleChange} 
+                   required 
+                 />
+               </div>
+             </div>
 
-          <div className="form-group">
-            <label>Repository URL</label>
-            <input 
-              name="repository_url" 
-              type="url" 
-              placeholder="https://github.com/user/repo" 
-              onChange={handleChange} 
-              required 
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Description</label>
-            <textarea 
-              name="description" 
-              rows="5" 
-              placeholder="What makes this project special?" 
-              onChange={handleChange} 
-              required 
-            />
-          </div>
+             <div>
+               <label className="block text-sm text-gray-400 mb-2">Description</label>
+               <textarea 
+                 name="description" 
+                 rows="6" 
+                 className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-neon-blue focus:outline-none resize-none"
+                 placeholder="What makes this project special?" 
+                 onChange={handleChange} 
+                 required 
+               />
+             </div>
+           </div>
         </div>
 
-        <div className="submit-media-section">
-          <div className="form-group">
-            <label>Project Thumbnail</label>
-            <div className="upload-box">
+        {/* RIGHT COLUMN: MEDIA UPLOAD & SUBMIT */}
+        <div className="lg:col-span-1 flex flex-col gap-8">
+          <div className="glass-panel p-6">
+            <h3 className="text-lg font-bold text-gray-300 mb-4">Project Visual (Optional)</h3>
+            <div className="relative w-full aspect-video rounded-lg border-2 border-dashed border-white/20 bg-black/20 hover:border-neon-purple hover:bg-black/30 transition-all flex items-center justify-center overflow-hidden group">
               <input 
                 type="file" 
                 name="media" 
-                accept="image/*" 
+                accept="image/*,video/*" 
                 onChange={handleChange} 
-                style={{ opacity: 0, position: 'absolute', width: '100%', height: '100%', cursor: 'pointer' }} 
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
               />
-              {preview ? <img src={preview} alt="Preview" /> : <span>Click to upload image</span>}
+              {preview ? (
+                form.media?.type.startsWith('video/') ? (
+                   <video src={preview} className="w-full h-full object-cover" controls />
+                ) : (
+                   <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+                )
+              ) : (
+                <div className="text-center p-4">
+                  <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">📸 / 🎥</div>
+                  <span className="text-sm text-gray-400">Add Image or Video</span>
+                </div>
+              )}
             </div>
           </div>
 
-          {error && (
-            <div className="error-msg" style={{ 
-              color: '#ff4d4d', 
-              backgroundColor: '#ffe6e6', 
-              padding: '10px', 
-              borderRadius: '5px',
-              marginBottom: '10px',
-              fontSize: '14px' 
-            }}>
-              ⚠️ {error}
-            </div>
-          )}
-
-          <button type="submit" className="submit-btn" disabled={loading}>
-            {loading ? "PROCESSING (Check Wallet)..." : "PUBLISH PROJECT"}
-          </button>
+          <div className="glass-panel p-6">
+            {error && (
+              <div className="mb-4 p-3 rounded bg-red-500/10 border border-red-500/30 text-red-500 text-sm flex items-start gap-2">
+                <span>⚠️</span>
+                <span>{error}</span>
+              </div>
+            )}
+            
+            <Button 
+              type="submit" 
+              variant="primary" 
+              className="w-full py-4 text-lg shadow-neon-blue"
+              disabled={loading}
+            >
+              {loading ? "Processing..." : "🚀 Publish Project"}
+            </Button>
+            <p className="text-xs text-gray-500 text-center mt-3">
+              Requires MetaMask signature
+            </p>
+          </div>
         </div>
+
       </form>
     </div>
   );

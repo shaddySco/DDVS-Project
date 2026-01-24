@@ -37,7 +37,7 @@ export default function AppRouter() {
             }
           />
 
-          <Route path="/profile/:wallet" element={<Profile />} />
+          <Route path="/profile/:id" element={<Profile />} />
 
           {/* ✅ PUBLIC VERIFICATION ROUTE */}
           <Route path="/verify/:id" element={<PublicVerification />} />

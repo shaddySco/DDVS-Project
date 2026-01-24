@@ -15,7 +15,7 @@ class SubmissionController extends Controller
             'category' => 'required|string',
             'description' => 'required|string',
             'repository_url' => 'required|url',
-            'media' => 'required|image|max:2048' // Changed to required for your masterpiece
+            'media' => 'nullable|file|mimes:jpg,jpeg,png,mp4,mov,avi|max:20480' // Optional, supports video, larger size
         ]);
 
         // 2. Handle File Upload
@@ -51,28 +51,47 @@ class SubmissionController extends Controller
     }
 
     public function show($id)
-{
-    // Find project and include the author's details
-    $submission = Submission::with('user')->find($id);
+    {
+        // Find project and include necessary relationships
+        $submission = Submission::with(['user', 'votes', 'comments', 'reposts'])->find($id);
 
-    if (!$submission) {
-        return response()->json(['message' => 'Project not found'], 404);
+        if (!$submission) {
+            return response()->json(['message' => 'Project not found'], 404);
+        }
+
+        // Check if the current user has voted
+        $hasVoted = false;
+        if (auth('sanctum')->check()) {
+            $hasVoted = $submission->votes()->where('user_id', auth('sanctum')->id())->exists();
+        }
+
+        // Format the response to match your frontend needs
+        return response()->json([
+            'id' => $submission->id,
+            'title' => $submission->title,
+            'category' => $submission->category,
+            'description' => $submission->description,
+            'repository_url' => $submission->repository_url,
+            'media_url' => $submission->media_path ? asset('storage/' . $submission->media_path) : null,
+            'transaction_hash' => $submission->transaction_hash,
+            'author' => [
+                'id' => $submission->user->id ?? null,
+                'username' => $submission->user->display_name ?? 'Unknown Architect',
+                'xp' => $submission->user->xp ?? 0,
+                'level' => $submission->user->level ?? 1,
+                'developer_type' => $submission->user->developer_type ?? 'Developer',
+            ],
+            'user_id' => $submission->user_id,
+            'ownership_status' => $submission->ownership_status ?? 'pending',
+            'attestation_hash' => $submission->attestation_hash,
+            'verified_at' => $submission->verified_at ? $submission->verified_at->toFormattedDateString() : null,
+            'total_votes' => $submission->votes()->count(),
+            'comments_count' => $submission->comments()->count(),
+            'reposts_count' => $submission->reposts()->count(),
+            'has_voted' => $hasVoted,
+            'created_at' => $submission->created_at->toFormattedDateString(),
+        ]);
     }
-
-    // Format the response to match your frontend needs
-    return response()->json([
-        'id' => $submission->id,
-        'title' => $submission->title,
-        'category' => $submission->category,
-        'description' => $submission->description,
-        'repo_url' => $submission->repo_url ?? $submission->repository_url,
-        'author_name' => $submission->user->username ?? $submission->user->name,
-        'user_id' => $submission->user_id,
-        'media_url' => $submission->media_path ? asset('storage/' . $submission->media_path) : null,
-        'transaction_hash' => $submission->transaction_hash,
-        'created_at' => $submission->created_at->toFormattedDateString(),
-    ]);
-}
 
     public function index(Request $request)
 {
@@ -97,19 +116,26 @@ class SubmissionController extends Controller
         $submissions = $query->latest()->get();
     }
 
-    // Format the data to match your frontend keys (sub.author_name, etc.)
+    // Format the data to match your frontend keys
     $formatted = $submissions->map(function($sub) {
+        $hasVoted = false;
+        if (auth('sanctum')->check()) {
+            $hasVoted = $sub->votes()->where('user_id', auth('sanctum')->id())->exists();
+        }
+
         return [
             'id' => $sub->id,
             'title' => $sub->title,
             'category' => $sub->category,
             'description' => $sub->description,
-            'author_name' => $sub->user->name ?? 'Unknown Developer',
+            'author_name' => $sub->user->display_name ?? 'Unknown Developer',
             'user_id' => $sub->user_id,
-            'total_votes' => $sub->votes_count ?? 0, // You can add counts later
-            'comments_count' => $sub->comments_count ?? 0,
-            'reposts_count' => $sub->reposts_count ?? 0,
-            'has_voted' => false, // Check if current user voted
+            'media_url' => $sub->media_path ? asset('storage/' . $sub->media_path) : null,
+            'total_votes' => $sub->votes()->count(),
+            'comments_count' => $sub->comments()->count(),
+            'reposts_count' => $sub->reposts()->count(),
+            'has_voted' => $hasVoted,
+            'created_at' => $sub->created_at->toFormattedDateString(),
         ];
     });
 

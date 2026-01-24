@@ -1,12 +1,20 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
 
-module.exports = {
+const config = {
   solidity: "0.8.20",
   networks: {
-    amoy: {
-      url: process.env.POLYGON_AMOY_RPC_URL, // Get from Alchemy or Infura
-      accounts: [process.env.PRIVATE_KEY] // Your personal wallet private key
+    localhost: {
+      url: "http://127.0.0.1:8545"
     }
   }
 };
+
+if (process.env.POLYGON_AMOY_RPC_URL && process.env.PRIVATE_KEY) {
+  config.networks.amoy = {
+    url: process.env.POLYGON_AMOY_RPC_URL,
+    accounts: [process.env.PRIVATE_KEY]
+  };
+}
+
+module.exports = config;

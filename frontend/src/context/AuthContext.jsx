@@ -29,6 +29,13 @@ export function AuthProvider({ children }) {
     }
 
     try {
+      // Force MetaMask to show the account picker UI
+      // This ensures that when a user logs out and reconnects, they can choose a different account
+      await window.ethereum.request({
+        method: "wallet_requestPermissions",
+        params: [{ eth_accounts: {} }],
+      });
+
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signerInstance = await provider.getSigner();
       const address = await signerInstance.getAddress();
@@ -47,7 +54,13 @@ export function AuthProvider({ children }) {
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
       setUser(userData);
-      return userData; // Useful for chaining
+      
+      // Redirect if profile is incomplete
+      if (!userData.username || userData.username === "Anonymous User") {
+        window.location.href = "/dashboard?edit=true";
+      }
+
+      return userData; 
     } catch (error) {
       console.error("Wallet connection failed", error);
     }

@@ -1,45 +1,17 @@
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useEffect, useRef, useState } from "react";
+import Button from "./ui/Button";
 
 export default function Navbar() {
-  // 1. Pull all necessary functions from AuthContext
-  const { walletAddress, connectWallet, logout, switchAccount } = useAuth();
+  const { walletAddress, connectWallet, logout, switchAccount, user } = useAuth(); // Assuming 'user' is available for XP/Level
+  const navigate = useNavigate();
 
-  const [darkMode, setDarkMode] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  /* ---------- Dark Mode Logic ---------- */
-  useEffect(() => {
-    const stored = localStorage.getItem("ddvs-theme");
-    if (stored === "dark") {
-      document.documentElement.classList.add("dark");
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setDarkMode(true);
-    }
-  }, []);
-
-  const toggleDarkMode = () => {
-    const isDark = !darkMode;
-    setDarkMode(isDark);
-    document.documentElement.classList.toggle("dark", isDark);
-    localStorage.setItem("ddvs-theme", isDark ? "dark" : "light");
-  };
-
-  /* ---------- Account Handlers ---------- */
-  const handleSwitch = async () => {
-    setProfileOpen(false);
-    await switchAccount();
-  };
-
-  const handleLogout = () => {
-    setProfileOpen(false);
-    logout();
-  };
-
-  /* ---------- Close dropdown on outside click ---------- */
+  // Close dropdown on outside click
   useEffect(() => {
     const handler = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -50,267 +22,136 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  const handleSwitch = async () => {
+    setProfileOpen(false);
+    await switchAccount();
+  };
+
+  const handleLogout = () => {
+    setProfileOpen(false);
+    logout();
+    navigate('/');
+  };
+
   return (
-    <>
-      <style>
-        {`
-        :root {
-          --bg: #ffffff;
-          --text: #111827;
-          --muted: #6b7280;
-          --border: #e5e7eb;
-          --primary: #2563eb;
-          --hover: #f9fafb;
-        }
-
-        .dark {
-          --bg: #0f172a;
-          --text: #f3f4f6;
-          --muted: #9ca3af;
-          --border: #1e293b;
-          --primary: #60a5fa;
-          --hover: #1e293b;
-        }
-
-        .nav {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 0.75rem 1.5rem;
-          background: var(--bg);
-          border-bottom: 1px solid var(--border);
-          position: sticky;
-          top: 0;
-          z-index: 50;
-        }
-
-        .brand {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          text-decoration: none;
-        }
-
-        .logo {
-          color: var(--primary);
-          font-weight: bold;
-          font-size: 1.2rem;
-        }
-
-        .brand-text {
-          font-weight: 700;
-          color: var(--text);
-          letter-spacing: -0.025em;
-        }
-
-        .links {
-          display: flex;
-          gap: 1.5rem;
-        }
-
-        .links a {
-          text-decoration: none;
-          color: var(--muted);
-          font-weight: 500;
-          transition: color 0.2s;
-        }
-
-        .links a.active {
-          color: var(--primary);
-        }
-
-        .links a:hover {
-          color: var(--text);
-        }
-
-        .actions {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
-
-        .icon-btn {
-          background: none;
-          border: none;
-          cursor: pointer;
-          font-size: 1.1rem;
-          padding: 5px;
-          display: grid;
-          place-items: center;
-        }
-
-        .connect-btn {
-          background: var(--primary);
-          color: #fff;
-          border: none;
-          padding: 0.5rem 1rem;
-          border-radius: 8px;
-          cursor: pointer;
-          font-weight: 600;
-          transition: opacity 0.2s;
-        }
-
-        .connect-btn:hover {
-          opacity: 0.9;
-        }
-
-        .profile-trigger {
-          position: relative;
-        }
-
-        .avatar {
-          width: 34px;
-          height: 34px;
-          border-radius: 50%;
-          background: var(--primary);
-          color: #fff;
-          display: grid;
-          place-items: center;
-          font-size: 0.75rem;
-          font-weight: bold;
-          cursor: pointer;
-          border: 2px solid var(--border);
-        }
-
-        .dropdown-menu {
-          position: absolute;
-          right: 0;
-          top: 48px;
-          background: var(--bg);
-          border: 1px solid var(--border);
-          border-radius: 12px;
-          width: 210px;
-          padding: 0.5rem;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
-
-        .dropdown-info {
-          padding: 0.5rem 0.75rem;
-          border-bottom: 1px solid var(--border);
-          margin-bottom: 0.5rem;
-        }
-
-        .wallet-addr {
-          font-size: 0.75rem;
-          color: var(--muted);
-          font-family: monospace;
-        }
-
-        .dropdown-menu a,
-        .dropdown-menu button {
-          width: 100%;
-          text-align: left;
-          padding: 0.6rem 0.75rem;
-          background: none;
-          border: none;
-          color: var(--text);
-          font-size: 0.9rem;
-          cursor: pointer;
-          border-radius: 6px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          text-decoration: none;
-        }
-
-        .dropdown-menu a:hover,
-        .dropdown-menu button:hover {
-          background: var(--hover);
-        }
-
-        .btn-switch {
-          color: var(--primary) !important;
-          font-weight: 500;
-        }
-
-        .btn-logout {
-          color: #ef4444 !important;
-          margin-top: 4px;
-        }
-
-        .hamburger {
-          display: none;
-          font-size: 1.5rem;
-          background: none;
-          border: none;
-          color: var(--text);
-          cursor: pointer;
-        }
-
-        @media (max-width: 768px) {
-          .hamburger { display: block; }
-          .links {
-            display: none;
-            position: absolute;
-            top: 100%;
-            left: 0; right: 0;
-            background: var(--bg);
-            flex-direction: column;
-            padding: 1rem;
-            border-bottom: 1px solid var(--border);
-          }
-          .links.open { display: flex; }
-        }
-        `}
-      </style>
-
-      <nav className="nav">
-        <Link to="/" className="brand">
-          <span className="logo">◆</span>
-          <span className="brand-text">DDVS</span>
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0F172A]/80 backdrop-blur-md border-b border-white/10 px-6 py-4 transition-all duration-300">
+      <div className="max-w-7xl mx-auto flex items-center justify-between">
+        
+        {/* BRAND */}
+        <Link to="/" className="flex items-center gap-2 group">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center text-white font-bold text-xl shadow-neon-purple group-hover:scale-110 transition-transform">
+            ◆
+          </div>
+          <div className="flex flex-col">
+            <span className="font-bold text-xl tracking-wider text-white group-hover:text-neon-blue transition-colors">DDVS</span>
+            <span className="text-[10px] uppercase tracking-[0.2em] text-gray-400">Decentralized Verify</span>
+          </div>
         </Link>
 
-        <button className="hamburger" onClick={() => setMenuOpen(!menuOpen)}>
-          ☰
-        </button>
-
-        <div className={`links ${menuOpen ? "open" : ""}`}>
-          <NavLink to="/community" onClick={() => setMenuOpen(false)}>Community</NavLink>
-          <NavLink to="/submit" onClick={() => setMenuOpen(false)}>Submit</NavLink>
-          <NavLink to="/dashboard" onClick={() => setMenuOpen(false)}>Dashboard</NavLink>
+        {/* DESKTOP LINKS */}
+        <div className="hidden md:flex items-center gap-8">
+          {[
+            { name: "Community", path: "/community" },
+            { name: "Submit", path: "/submit" },
+            { name: "Dashboard", path: "/dashboard" },
+          ].map((link) => (
+            <NavLink
+              key={link.name}
+              to={link.path}
+              className={({ isActive }) =>
+                `text-sm font-medium tracking-wide transition-all duration-300 relative ${
+                  isActive 
+                  ? "text-neon-blue neon-text-blue" 
+                  : "text-gray-400 hover:text-white"
+                }`
+              }
+            >
+              {link.name}
+            </NavLink>
+          ))}
         </div>
 
-        <div className="actions">
-          <button className="icon-btn" onClick={toggleDarkMode}>
-            {darkMode ? "☀️" : "🌙"}
-          </button>
+        {/* ACTIONS */}
+        <div className="flex items-center gap-4">
+          
+          {/* User Level Badge (Mockup) */}
+          {walletAddress && (
+             <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-black/40 rounded-full border border-white/10">
+               <span className="text-xs text-neon-gold">LVL {user?.level || 1}</span>
+               <div className="w-px h-3 bg-white/10"></div>
+               <span className="text-xs text-neon-purple">{user?.xp || 0} XP</span>
+             </div>
+          )}
 
           {walletAddress ? (
-            <div className="profile-trigger" ref={dropdownRef}>
-              <div className="avatar" onClick={() => setProfileOpen(!profileOpen)}>
-                {walletAddress.slice(2, 4).toUpperCase()}
-              </div>
+            <div className="relative" ref={dropdownRef}>
+              <button 
+                onClick={() => setProfileOpen(!profileOpen)}
+                className="w-10 h-10 rounded-full bg-gradient-to-r from-gray-800 to-gray-900 border border-white/20 p-0.5 hover:border-neon-purple transition-all"
+              >
+                <div className="w-full h-full rounded-full bg-gray-900 flex items-center justify-center font-bold text-xs text-neon-blue">
+                   {walletAddress.slice(2, 4).toUpperCase()}
+                </div>
+              </button>
 
+              {/* DROPDOWN MENU */}
               {profileOpen && (
-                <div className="dropdown-menu">
-                  <div className="dropdown-info">
-                    <div style={{fontWeight: 600, fontSize: '0.85rem'}}>Connected Wallet</div>
-                    <div className="wallet-addr">
-                      {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
-                    </div>
+                <div className="absolute right-0 mt-3 w-64 bg-[#0F172A]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl p-2 animate-in fade-in slide-in-from-top-2">
+                  <div className="p-3 border-b border-white/5 mb-2">
+                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Connected Wallet</p>
+                    <p className="font-mono text-xs text-neon-blue truncate">{walletAddress}</p>
                   </div>
                   
-                  <Link to="/dashboard" onClick={() => setProfileOpen(false)}>
-                    👤 My Dashboard
+                  <Link 
+                    to="/dashboard" 
+                    className="flex items-center gap-3 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 rounded-lg transition-colors"
+                    onClick={() => setProfileOpen(false)}
+                  >
+                    <span>👤</span> My Dashboard
                   </Link>
-                  
-                  <button className="btn-switch" onClick={handleSwitch}>
-                    🔄 Switch Account
+
+                  <button 
+                    onClick={handleSwitch}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 rounded-lg transition-colors text-left"
+                  >
+                    <span>🔄</span> Switch Account
                   </button>
-                  
-                  <button className="btn-logout" onClick={handleLogout}>
-                    🔴 Logout
+
+                  <div className="h-px bg-white/5 my-2"></div>
+
+                  <button 
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-colors text-left"
+                  >
+                    <span>🔴</span> Logout
                   </button>
                 </div>
               )}
             </div>
           ) : (
-            <button className="connect-btn" onClick={connectWallet}>
+            <Button variant="primary" size="sm" onClick={connectWallet}>
               Connect Wallet
-            </button>
+            </Button>
           )}
+
+          {/* MOBILE MENU TOGGLE */}
+          <button 
+            className="md:hidden text-2xl text-white"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            ☰
+          </button>
         </div>
-      </nav>
-    </>
+      </div>
+
+      {/* MOBILE NAV */}
+      {mobileMenuOpen && (
+        <div className="md:hidden absolute top-full left-0 right-0 bg-[#0F172A] border-b border-white/10 p-4 flex flex-col gap-4 shadow-2xl">
+           <NavLink to="/community" onClick={() => setMobileMenuOpen(false)} className="text-gray-300 py-2 border-b border-white/5">Community</NavLink>
+           <NavLink to="/submit" onClick={() => setMobileMenuOpen(false)} className="text-gray-300 py-2 border-b border-white/5">Submit</NavLink>
+           <NavLink to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="text-gray-300 py-2 border-b border-white/5">Dashboard</NavLink>
+        </div>
+      )}
+    </nav>
   );
 }

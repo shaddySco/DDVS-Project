@@ -36,13 +36,17 @@ public function feed(Request $request)
     $type = $request->query('type', 'global');
 
     $submissions = Submission::query()
+        ->join('users', 'submissions.user_id', '=', 'users.id')
         ->select([
             DB::raw("CONCAT('submission-', submissions.id) as feed_id"),
             'submissions.id',
             'submissions.user_id',
             'submissions.title',
             'submissions.description',
+            'submissions.media_url',
+            'submissions.category',
             'submissions.created_at',
+            DB::raw("COALESCE(users.username, users.name, 'Anonymous') as author_name"),
             DB::raw('(SELECT COUNT(*) FROM comments WHERE comments.submission_id = submissions.id) as comments_count'),
             DB::raw('(SELECT COUNT(*) FROM votes WHERE votes.submission_id = submissions.id) as total_votes'),
             DB::raw('(SELECT COUNT(*) FROM reposts WHERE reposts.submission_id = submissions.id) as reposts_count'),
@@ -53,13 +57,17 @@ public function feed(Request $request)
 
     $reposts = Repost::query()
         ->join('submissions', 'reposts.submission_id', '=', 'submissions.id')
+        ->join('users', 'submissions.user_id', '=', 'users.id')
         ->select([
             DB::raw("CONCAT('repost-', reposts.id) as feed_id"),
             'submissions.id',
             'submissions.user_id',
             'submissions.title',
             'submissions.description',
+            'submissions.media_url',
+            'submissions.category',
             'reposts.created_at',
+            DB::raw("COALESCE(users.username, users.name, 'Anonymous') as author_name"),
             DB::raw('(SELECT COUNT(*) FROM comments WHERE comments.submission_id = submissions.id) as comments_count'),
             DB::raw('(SELECT COUNT(*) FROM votes WHERE votes.submission_id = submissions.id) as total_votes'),
             DB::raw('(SELECT COUNT(*) FROM reposts WHERE reposts.submission_id = submissions.id) as reposts_count'),

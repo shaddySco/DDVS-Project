@@ -11,7 +11,13 @@ class Submission extends Model
 {
     protected $fillable = [
         'user_id', 'title', 'category', 'description', 
-        'repository_url', 'media_path', 'transaction_hash'
+        'repository_url', 'media_path', 'transaction_hash',
+        'verification_message', 'verification_signature', 'verification_path',
+        'verified_at', 'ownership_status', 'attestation_hash'
+    ];
+
+    protected $casts = [
+        'verified_at' => 'datetime',
     ];
 
     /* =======================

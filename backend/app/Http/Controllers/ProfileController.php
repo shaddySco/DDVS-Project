@@ -62,4 +62,29 @@ class ProfileController extends Controller
             'feed' => $feed
         ]);
     }
+
+    public function update(Request $request)
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'username' => 'nullable|string|max:255',
+            'bio' => 'nullable|string|max:1000',
+            'skills' => 'nullable|string|max:1000',
+            'developer_type' => 'nullable|string|max:255',
+        ]);
+
+        $user->update([
+            'username' => $request->username,
+            'bio' => $request->bio,
+            'skills' => $request->skills,
+            'developer_type' => $request->developer_type,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Profile updated successfully',
+            'user' => $user
+        ]);
+    }
 }
