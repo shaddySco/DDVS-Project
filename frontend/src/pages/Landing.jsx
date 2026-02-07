@@ -3,405 +3,343 @@ import axios from "../lib/axios";
 import { Link } from "react-router-dom";
 import Button from "../components/ui/Button";
 import ChatModal from "../components/ChatModal";
+import ProjectCard from "../components/ProjectCard";
+import ProjectMiniCard from "../components/ProjectMiniCard";
 import { useAuth } from "../context/AuthContext";
 
 export default function Landing() {
-  const { user } = useAuth();
-  const [data, setData] = useState({
-    stats: { totalDevelopers: 0, totalSubmissions: 0, totalVotes: 0 },
-    leaderboard: [],
-    latest: [],
-    topVoted: [],
-    topCommented: [],
-    topReposted: [],
-    featuredUser: null
-  });
-  const [loading, setLoading] = useState(true);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [categoryFilter, setCategoryFilter] = useState("All Categories");
+   const { user } = useAuth();
+   const [data, setData] = useState({
+      stats: { totalDevelopers: 0, totalSubmissions: 0, totalVotes: 0 },
+      leaderboard: [],
+      latest: [],
+      topVoted: [],
+      topCommented: [],
+      topReposted: [],
+      featuredUser: null
+   });
+   const [loading, setLoading] = useState(true);
+   const [chatOpen, setChatOpen] = useState(false);
+   const [categoryFilter, setCategoryFilter] = useState("All Categories");
 
-  const categories = [
-    "All Categories",
-    "Machine Learning",
-    "Web Development",
-    "Blockchain / Web3",
-    "Cybersecurity",
-    "Mobile Apps",
-    "AI / Data Science",
-    "Other"
-  ];
+   const categories = [
+      "All Categories", "Machine Learning", "Web Development", "Blockchain / Web3",
+      "Cybersecurity", "Mobile Apps", "AI / Data Science", "Other"
+   ];
 
-  useEffect(() => {
-    axios.get("/landing")
-      .then(res => setData(res.data))
-      .catch(err => console.error("Landing error:", err))
-      .finally(() => setLoading(false));
-  }, []);
-  const getRank = (level) => {
-    if (level >= 200) return { name: "ORACLE", color: "bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)]" };
-    if (level >= 100) return { name: "OVERSEER", color: "bg-neon-purple shadow-[0_0_15px_rgba(188,19,254,0.4)]" };
-    if (level >= 60) return { name: "ARCHITECT", color: "bg-neon-blue shadow-[0_0_15px_rgba(0,243,255,0.4)]" };
-    if (level >= 30) return { name: "VANGUARD", color: "bg-neon-gold shadow-[0_0_15px_rgba(255,182,0,0.4)] shadow-neon-gold" };
-    if (level >= 10) return { name: "SPECIALIST", color: "bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]" };
-    return { name: "INITIATE", color: "bg-gray-500" };
-  };
+   useEffect(() => {
+      axios.get("/landing")
+         .then(res => setData(res.data))
+         .catch(err => console.error("Landing error:", err))
+         .finally(() => setLoading(false));
+   }, []);
 
-  const getSubjectTier = (xp) => {
-    if (xp >= 200) return { name: "MASTER SAGE", color: "text-neon-purple", bg: "bg-neon-purple/10", border: "border-neon-purple/50" };
-    if (xp >= 50) return { name: "ARCHITECT", color: "text-neon-blue", bg: "bg-neon-blue/10", border: "border-neon-blue/50" };
-    return { name: "BUILDER", color: "text-green-500", bg: "bg-green-500/10", border: "border-green-500/50" };
-  };
+   const getRank = (level) => {
+      if (level >= 200) return { name: "ORACLE", color: "bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)]" };
+      if (level >= 100) return { name: "OVERSEER", color: "bg-neon-purple shadow-[0_0_15px_rgba(188,19,254,0.4)]" };
+      if (level >= 60) return { name: "ARCHITECT", color: "bg-neon-blue shadow-[0_0_15px_rgba(0,243,255,0.4)]" };
+      if (level >= 30) return { name: "VANGUARD", color: "bg-neon-gold shadow-[0_0_15px_rgba(255,182,0,0.4)] shadow-neon-gold" };
+      if (level >= 10) return { name: "SPECIALIST", color: "bg-neon-green shadow-[0_0_15px_rgba(34,197,94,0.4)]" };
+      return { name: "INITIATE", color: "bg-slate-600" };
+   };
 
-  const currentRank = data.featuredUser ? getRank(data.featuredUser.level ?? 1) : null;
-  const subjectTier = data.featuredUser ? getSubjectTier(data.featuredUser.subject_xp ?? 0) : null;
-  const focusSector = data.featuredUser?.focus_sector || "Generalist";
+   const getSubjectTier = (xp) => {
+      // No color changes needed here, handled by Tailwind config
+      if (xp >= 200) return { name: "MASTER SAGE" };
+      if (xp >= 50) return { name: "ARCHITECT" };
+      return { name: "BUILDER" };
+   };
 
-  const filteredWork = categoryFilter === "All Categories" 
-    ? data.latest 
-    : data.latest.filter(p => p.category === categoryFilter);
+   const currentRank = data.featuredUser ? getRank(data.featuredUser.level ?? 1) : null;
+   const subjectTier = data.featuredUser ? getSubjectTier(data.featuredUser.subject_xp ?? 0) : null;
+   const focusSector = data.featuredUser?.focus_sector || "Generalist";
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0B0F1A]">
-      <div className="w-16 h-16 border-4 border-neon-blue border-t-transparent rounded-full animate-spin"></div>
-    </div>
-  );
+   const filteredWork = categoryFilter === "All Categories"
+      ? data.latest
+      : data.latest.filter(p => p.category === categoryFilter);
 
-  return (
-    <div className="min-h-screen bg-[#0B0F1A] text-white pt-24 pb-20 relative overflow-hidden">
-      
-      {/* BACKGROUND BLOBS */}
-      <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-neon-purple/5 blur-[120px] rounded-full pointer-events-none"></div>
-      <div className="absolute top-40 right-1/4 w-[500px] h-[500px] bg-neon-blue/5 blur-[120px] rounded-full pointer-events-none"></div>
-
-      {/* MARQUEE SECTOR - What is DDVS? */}
-      <div className="w-full bg-white/5 border-y border-white/5 py-4 mb-20 overflow-hidden relative group">
-        <div className="flex whitespace-nowrap animate-marquee group-hover:pause">
-           {[...Array(10)].map((_, i) => (
-             <div key={i} className="flex items-center gap-12 mx-10">
-                <div className="flex items-center gap-2">
-                   <div className="w-2 h-2 rounded-full bg-neon-blue"></div>
-                   <span className="text-[11px] font-black tracking-[0.4em] text-white uppercase">DDVS PROTOCOL</span>
-                </div>
-                <span className="text-[11px] font-black tracking-[0.4em] text-gray-500 uppercase">DECENTRALIZED VERIFIED CONTRIBUTION NETWORK</span>
-                <div className="flex items-center gap-2">
-                   <div className="w-2 h-2 rounded-full bg-neon-purple"></div>
-                   <span className="text-[11px] font-black tracking-[0.4em] text-white uppercase">PROVE SKILLS ON-CHAIN</span>
-                </div>
-                <span className="text-[11px] font-black tracking-[0.4em] text-gray-500 uppercase">COMMUNITY DRIVEN REPUTATION</span>
-             </div>
-           ))}
-        </div>
+   if (loading) return (
+      <div className="min-h-screen flex items-center justify-center bg-gaming-bg">
+         <div className="relative">
+            <div className="w-20 h-20 border-4 border-neon-blue/30 border-t-neon-blue rounded-full animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center font-mono text-neon-blue text-xs animate-pulse">LOADING</div>
+         </div>
       </div>
-
-      <div className="max-w-7xl mx-auto px-6 relative z-10">
-        
-        {/* HERO / FEATURED ARCHITECT */}
-        {data.featuredUser && (
-          <div className="relative mb-24 group">
-             <div className="glass-panel p-8 md:p-12 overflow-hidden flex flex-col md:flex-row items-center md:items-start gap-12 border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.4)] relative">
-               
-               {/* Large Rounded Avatar Area */}
-               <div className="relative shrink-0">
-                  <div className="w-48 h-48 md:w-64 md:h-64 rounded-[4rem] bg-gradient-to-br from-gray-700 to-black p-1.5 shadow-[0_0_50px_rgba(0,243,255,0.1)] group-hover:shadow-neon-blue/20 transition-all duration-700 overflow-hidden">
-                    <div className="w-full h-full rounded-[3.8rem] bg-[#0F172A] flex items-center justify-center text-8xl font-black text-white relative">
-                       {data.featuredUser?.username?.charAt(0).toUpperCase() || "?"}
-                       <div className="absolute inset-0 bg-gradient-to-t from-neon-blue/20 to-transparent"></div>
-                    </div>
-                  </div>
-                  {/* Badge syncing with rank data */}
-                  <div className={`absolute -top-6 -right-6 w-20 h-20 rounded-full ${currentRank?.color || 'bg-gray-500'} flex flex-col items-center justify-center text-white shadow-2xl font-black text-[10px] border-[6px] border-[#0B0F1A] rotate-12 transition-transform group-hover:rotate-0`}>
-                     <span className="opacity-70">LVL</span>
-                     <span className="text-2xl leading-none">{data.featuredUser?.level ?? 1}</span>
-                  </div>
-               </div>
-
-               {/* Bio and Info */}
-               <div className="flex-1 text-center md:text-left pt-6">
-                 <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
-                    <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-white drop-shadow-2xl">
-                      {data.featuredUser?.username || "Anonymous"}
-                    </h2>
-                    <div className={`px-4 py-1.5 rounded-full ${currentRank?.color || 'bg-gray-500'} text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-lg`}>
-                       {currentRank?.name || "INITIATE"}
-                    </div>
-                 </div>
-                 <p className="text-gray-400 text-xl md:text-2xl max-w-2xl mb-10 font-medium leading-relaxed italic opacity-80">
-                   "{data.featuredUser?.bio || "No bio available."}"
-                 </p>
-                 
-                 {/* Only show buttons if NOT the logged-in user */}
-                 {user?.id !== data.featuredUser.id ? (
-                   <div className="flex flex-wrap gap-5 justify-center md:justify-start">
-                      <Link to={`/profile/${data.featuredUser.id}`}>
-                        <Button variant="primary" className="h-16 px-12 rounded-2xl shadow-neon-blue font-black uppercase tracking-widest text-xs">
-                           Follow Architect
-                        </Button>
-                      </Link>
-                      <Button 
-                        variant="glass" 
-                        className="h-16 px-12 rounded-2xl font-black uppercase tracking-widest text-xs border-white/10 hover:bg-white/5"
-                        onClick={() => setChatOpen(true)}
-                      >
-                         Get in touch
-                      </Button>
-                      
-                      {/* Synergy Match Report */}
-                      {data.featuredUser.match_report && (
-                        <div className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-2xl px-6 py-3 animate-in fade-in slide-in-from-right-4 duration-700">
-                           <div className="relative w-12 h-12 flex items-center justify-center">
-                              <svg className="w-full h-full -rotate-90">
-                                 <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" strokeWidth="4" className="text-white/5" />
-                                 <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" strokeWidth="4" strokeDasharray={125.6} strokeDashoffset={125.6 - (data.featuredUser.match_report.synergy / 100) * 125.6} className="text-neon-blue" />
-                              </svg>
-                              <span className="absolute text-[10px] font-black">{data.featuredUser.match_report.synergy}%</span>
-                           </div>
-                           <div>
-                              <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Synergy Match</p>
-                              <p className="text-xs font-bold text-white uppercase">{data.featuredUser.match_report.message}</p>
-                           </div>
-                        </div>
-                      )}
-                   </div>
-                 ) : (
-                    <div className="flex items-center gap-3 p-4 bg-neon-blue/5 border border-neon-blue/20 rounded-2xl inline-flex shadow-[0_0_20px_rgba(0,243,255,0.05)]">
-                       <span className="text-2xl">👤</span>
-                       <div className="text-left">
-                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-neon-blue">Architect Dashboard</p>
-                          <p className="text-xs font-bold text-gray-400">You are currently viewing your own profile spotlight</p>
-                       </div>
-                    </div>
-                 )}
-               </div>
-
-                {/* Morphed Stats based on Focus Sector */}
-                <div className="hidden lg:flex flex-col gap-10 justify-center min-w-[220px]">
-                  <div className="text-center md:text-right group/morph">
-                    <p className={`text-[10px] font-black uppercase tracking-[0.3em] mb-2 ${subjectTier?.color || 'text-gray-600'} transition-all group-hover/morph:scale-110`}>
-                       {focusSector} Expertise
-                    </p>
-                    <p className="text-4xl font-black text-white tracking-tighter">
-                       {subjectTier?.name || "BUILDER"}
-                    </p>
-                  </div>
-                  <StatItem label={`${focusSector} XP`} value={data.featuredUser?.subject_xp ?? 0} color="text-neon-blue" />
-                  <StatItem label="Global Trust XP" value={data.featuredUser?.xp ?? 0} color="text-neon-gold" />
-               </div>
-
-             </div>
-          </div>
-        )}
-
-        {/* TOP CATEGORIES SECTION */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-24 pt-10">
-           {/* TOP VOTED */}
-           <div className="space-y-8">
-              <h3 className="text-xs font-black uppercase tracking-[.4em] text-neon-gold flex items-center gap-4">
-                 <span className="w-10 h-px bg-neon-gold/30"></span> MOST UPVOTED
-              </h3>
-              <div className="space-y-6">
-                 {data.topVoted.map(project => (
-                   <ProjectMiniCard key={project.id} project={project} icon="⚡" color="neon-gold" />
-                 ))}
-              </div>
-           </div>
-           {/* TOP COMMENTED */}
-           <div className="space-y-8">
-              <h3 className="text-xs font-black uppercase tracking-[.4em] text-neon-blue flex items-center gap-4">
-                 <span className="w-10 h-px bg-neon-blue/30"></span> MOST DISCUSSED
-              </h3>
-              <div className="space-y-6">
-                 {data.topCommented.map(project => (
-                   <ProjectMiniCard key={project.id} project={project} icon="💬" color="neon-blue" />
-                 ))}
-              </div>
-           </div>
-           {/* TOP REPOSTED */}
-           <div className="space-y-8">
-              <h3 className="text-xs font-black uppercase tracking-[.4em] text-neon-purple flex items-center gap-4">
-                 <span className="w-10 h-px bg-neon-purple/30"></span> TOP REPOSTS
-              </h3>
-              <div className="space-y-6">
-                 {data.topReposted.map(project => (
-                   <ProjectMiniCard key={project.id} project={project} icon="🔁" color="neon-purple" />
-                 ))}
-              </div>
-           </div>
-        </div>
-
-         {/* DISCOVERY GRID */}
-        <div className="mt-20">
-          <div className="flex items-center justify-between mb-12 border-b border-white/5 pb-8">
-             <div className="flex items-center gap-10">
-                <h3 className="text-xl font-black uppercase tracking-widest text-white">Discovery Feed</h3>
-                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest bg-white/5 px-3 py-1 rounded-full">
-                   {data.stats.totalSubmissions} SIGNALS DETECTED
-                </span>
-             </div>
-             <div className="hidden md:flex items-center gap-6">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Filter Sector</span>
-                <select 
-                  className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white focus:outline-none focus:border-neon-blue/50 cursor-pointer shadow-xl"
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                >
-                   {categories.map(c => <option key={c}>{c}</option>)}
-                </select>
-             </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
-            {filteredWork.length > 0 ? filteredWork.map(project => (
-              <ProjectCard key={project.id} project={project} />
-            )) : (
-              <div className="col-span-full py-20 text-center glass-panel border-white/5 opacity-50">
-                 <p className="text-xl font-black uppercase tracking-widest">No Signals in this sector</p>
-              </div>
-            )}
-          </div>
-
-          {/* LEADERBOARD TRANSITION */}
-          <div className="mt-40">
-             <div className="text-center mb-20">
-                <h3 className="text-5xl md:text-8xl font-black tracking-tighter mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-600">Leaderboard</h3>
-                <p className="text-gray-500 font-black uppercase tracking-[0.4em] text-[10px]">Ranked by Cryptographic Performance Consensus</p>
-             </div>
-             <div className="glass-panel p-2 shadow-2xl border-white/5 rounded-[2rem]">
-                {data.leaderboard.map((u, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-8 hover:bg-white/5 transition-all group rounded-2xl border-b border-white/5 last:border-0 relative">
-                     <div className="flex items-center gap-8">
-                        <span className="font-mono text-3xl font-black text-gray-700 group-hover:text-neon-blue transition-colors w-12 text-center">{(idx + 1).toString().padStart(2, '0')}</span>
-                        <div className="w-16 h-16 rounded-2xl bg-slate-900 border-2 border-white/10 flex items-center justify-center text-xl font-black group-hover:border-neon-blue group-hover:rotate-6 transition-all shadow-xl">
-                           {u.username?.charAt(0).toUpperCase() || "?"}
-                        </div>
-                        <div>
-                           <div className="flex items-center gap-3 mb-1">
-                              <p className="font-black text-2xl group-hover:text-neon-blue transition-colors tracking-tight">{u.username || "Anonymous"}</p>
-                              <span className={`px-2 py-0.5 rounded text-[9px] font-black ${getRank(u.level ?? 1).color} text-white`}>{getRank(u.level ?? 1).name}</span>
-                           </div>
-                           <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest leading-none">NEXUS PROTOCOL STAGE {u.level ?? 1}</p>
-                        </div>
-                     </div>
-                     <div className="text-right">
-                        <p className="text-4xl font-black text-white group-hover:text-neon-gold transition-colors tracking-tighter">{(u.xp ?? 0).toLocaleString()}</p>
-                        <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-1">TRUST XP</p>
-                     </div>
-                  </div>
-                ))}
-             </div>
-          </div>
-
-          {/* CTA at the bottom */}
-          <div className="mt-40 text-center glass-panel p-20 border-white/5 relative overflow-hidden group rounded-[4rem]">
-             <div className="absolute inset-0 bg-gradient-to-r from-neon-blue/10 to-neon-purple/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-             <h3 className="text-4xl md:text-7xl font-black tracking-tighter mb-10 bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-gray-500 pb-2">Ready to showcase your progress?</h3>
-             <p className="text-gray-400 text-2xl mb-14 max-w-3xl mx-auto font-medium leading-relaxed opacity-80 group-hover:opacity-100 transition-opacity">
-                Join {data.stats.totalDevelopers}+ architects in the most trusted decentralized contribution network. Gain XP, climb the Nexus, and verify your legacy on the blockchain.
-             </p>
-             <Link to="/submit">
-                <Button variant="primary" className="h-20 px-20 rounded-2xl shadow-neon-blue text-sm font-black uppercase tracking-[0.3em] hover:scale-105 transition-transform">
-                   Start Your Deployment 🚀
-                </Button>
-             </Link>
-          </div>
-
-        </div>
-
-      </div>
-
-      <ChatModal 
-        isOpen={chatOpen}
-        onClose={() => setChatOpen(false)}
-        recipientId={data.featuredUser?.id}
-        recipientName={data.featuredUser?.username}
-      />
-    </div>
-  );
-}
-
-function StatItem({ label, value, color = "text-white" }) {
-   return (
-    <div className="text-center md:text-right group/stat">
-      <p className="text-gray-600 uppercase font-black text-[10px] tracking-[0.3em] mb-2 group-hover/stat:text-gray-400 transition-colors">{label}</p>
-      <p className={`text-4xl font-black ${color} tracking-tighter group-hover/stat:scale-110 transition-transform origin-right`}>{value.toLocaleString()}</p>
-    </div>
    );
-}
 
-function ProjectCard({ project }) {
    return (
-      <Link to={`/project/${project.id}`} className="group/card block">
-         <div className="flex flex-col">
-            <div className="relative aspect-[4/3] rounded-[3rem] overflow-hidden bg-[#0A0E17] border border-white/5 group-hover/card:border-neon-blue/40 transition-all duration-700 shadow-2xl mb-8">
-               {project.media_url ? (
-                  <img src={project.media_url} alt={project.title} className="w-full h-full object-cover transition-transform duration-1000 group-hover/card:scale-110" />
-               ) : (
-                  <div className="w-full h-full flex items-center justify-center text-8xl grayscale opacity-20">🛠️</div>
-               )}
-               <div className="absolute top-8 right-8 flex gap-3 z-20">
-                  <div className="w-11 h-11 rounded-full bg-[#111] border border-white/10 flex items-center justify-center text-[10px] font-black text-neon-purple shadow-xl">UI</div>
-                  <div className="w-11 h-11 rounded-full bg-[#111] border border-white/10 flex items-center justify-center text-[10px] font-black text-neon-blue shadow-xl">BR</div>
-               </div>
-               <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/card:opacity-100 transition-all duration-500 backdrop-blur-[2px] flex items-center justify-center gap-12 z-10">
-                  <div className="flex flex-col items-center gap-2 -translate-y-4 group-hover/card:translate-y-0 transition-transform duration-500">
-                     <span className="text-4xl drop-shadow-neon">⚡</span>
-                     <span className="font-black text-sm text-neon-gold">{project.total_votes}</span>
+      <div className="min-h-screen bg-gaming-bg text-white pt-24 pb-20 relative overflow-hidden">
+
+         {/* AMBIENT BACKGROUND EFFECTS */}
+         <div className="fixed top-0 left-0 w-full h-full pointer-events-none z-0">
+            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-neon-purple/10 blur-[150px] rounded-full animate-float"></div>
+            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-neon-blue/10 blur-[150px] rounded-full animate-float" style={{ animationDelay: '-3s' }}></div>
+            <div className="absolute top-[20%] right-[20%] w-[30%] h-[30%] bg-neon-green/5 blur-[120px] rounded-full animate-pulse-slow"></div>
+         </div>
+
+         {/* FLOATING PARTICLES (CSS only) */}
+         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-20">
+            <div className="absolute top-1/4 left-1/4 w-1 h-1 bg-white rounded-full animate-ping"></div>
+            <div className="absolute top-3/4 right-1/3 w-1 h-1 bg-neon-blue rounded-full animate-ping" style={{ animationDelay: '1s' }}></div>
+            <div className="absolute top-1/2 left-3/4 w-1 h-1 bg-neon-purple rounded-full animate-ping" style={{ animationDelay: '2s' }}></div>
+         </div>
+
+         <div className="max-w-7xl mx-auto px-6 relative z-10">
+
+            {/* HERO HEADER */}
+            {data.featuredUser && (
+               <div className="relative mb-32 group animate-in fade-in slide-in-from-bottom-8 duration-1000">
+                  <div className="glass-panel p-8 md:p-12 border-glass-stroke shadow-[0_0_100px_rgba(0,240,255,0.1)] relative overflow-hidden">
+
+                     {/* Decorative Lines */}
+                     <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-neon-blue/50 to-transparent"></div>
+                     <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-neon-purple/50 to-transparent"></div>
+
+                     <div className="flex flex-col md:flex-row items-center md:items-start gap-12 relative z-10">
+
+                        {/* AVATAR SECTION */}
+                        <div className="relative shrink-0 group/avatar">
+                           <div className="w-40 h-40 md:w-56 md:h-56 rounded-[3rem] bg-gradient-to-br from-slate-800 to-black p-1 shadow-[0_0_40px_rgba(0,240,255,0.2)] transition-all duration-500 group-hover/avatar:scale-105 group-hover/avatar:shadow-neon-blue/40 relative z-10">
+                              <div className="w-full h-full rounded-[2.8rem] bg-gaming-bg flex items-center justify-center text-7xl font-black text-white relative overflow-hidden">
+                                 <span className="relative z-10">{data.featuredUser?.username?.charAt(0).toUpperCase() || "?"}</span>
+                                 <div className="absolute inset-0 bg-gradient-to-t from-neon-blue/20 to-transparent opacity-50"></div>
+                              </div>
+                           </div>
+
+                           {/* Rank Badge */}
+                           <div className={`absolute -top-4 -right-4 w-16 h-16 rounded-2xl ${currentRank?.color || 'bg-slate-600'} flex flex-col items-center justify-center text-white shadow-xl font-black text-[10px] border-4 border-gaming-bg rotate-6 group-hover/avatar:rotate-12 transition-transform z-20`}>
+                              <span className="opacity-80 text-[8px] uppercase tracking-wider">LVL</span>
+                              <span className="text-2xl leading-none">{data.featuredUser?.level ?? 1}</span>
+                           </div>
+
+                           {/* Glitch Effect Behind */}
+                           <div className="absolute inset-0 bg-neon-purple/0 rounded-[3rem] blur-xl -z-10 transition-all group-hover/avatar:bg-neon-purple/30 group-hover/avatar:blur-2xl"></div>
+                        </div>
+
+                        {/* INFO SECTION */}
+                        <div className="flex-1 text-center md:text-left pt-2">
+                           <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
+                              <div className="inline-block px-3 py-1 rounded-full border border-neon-blue/30 bg-neon-blue/5 text-neon-blue text-[10px] font-mono uppercase tracking-widest shadow-neon-blue/50">
+                                 Featured Architect
+                              </div>
+                              <div className={`px-3 py-1 rounded-full ${currentRank?.color || 'bg-gray-500'} text-white text-[10px] font-black uppercase tracking-widest shadow-lg`}>
+                                 {currentRank?.name || "INITIATE"}
+                              </div>
+                           </div>
+
+                           <h2 className="text-5xl md:text-7xl font-black tracking-tight text-white drop-shadow-2xl mb-6">
+                              {data.featuredUser?.username || "Anonymous"}
+                           </h2>
+
+                           <p className="text-gray-400 text-lg md:text-xl max-w-2xl mb-10 font-medium leading-relaxed border-l-2 border-neon-blue/30 pl-6 italic">
+                              "{data.featuredUser?.bio || "No bio available."}"
+                           </p>
+
+                           {/* ACTION BUTTONS */}
+                           {user?.id !== data.featuredUser.id ? (
+                              <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+                                 <Link to={`/profile/${data.featuredUser.id}`}>
+                                    <Button variant="primary" size="lg" icon="⚡">
+                                       Connect Profile
+                                    </Button>
+                                 </Link>
+                                 <Button
+                                    variant="glass"
+                                    size="lg"
+                                    icon="💬"
+                                    onClick={() => setChatOpen(true)}
+                                 >
+                                    Message
+                                 </Button>
+                              </div>
+                           ) : (
+                              <div className="flex items-center gap-4 p-4 bg-neon-blue/5 border border-neon-blue/20 rounded-2xl inline-flex backdrop-blur-sm">
+                                 <span className="text-2xl animate-pulse">💠</span>
+                                 <div className="text-left">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-neon-blue">Dashboard Preview</p>
+                                    <p className="text-xs font-mono text-gray-400">Viewing your own public spotlight.</p>
+                                 </div>
+                              </div>
+                           )}
+                        </div>
+
+                        {/* STATS COLUMN */}
+                        <div className="hidden lg:flex flex-col gap-8 justify-center min-w-[200px] border-l border-white/5 pl-12">
+                           <StatItem label="Focus Sector" value={focusSector} color="text-white" isText />
+                           <StatItem label={`${focusSector} XP`} value={data.featuredUser?.subject_xp ?? 0} color="text-neon-blue" />
+                           <StatItem label="Global Trust" value={data.featuredUser?.xp ?? 0} color="text-neon-gold" />
+                        </div>
+
+                     </div>
+
+                     {/* Background Grid */}
+                     <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10 pointer-events-none"></div>
                   </div>
-                  <div className="flex flex-col items-center gap-2 translate-y-4 group-hover/card:translate-y-0 transition-transform duration-500">
-                     <span className="text-4xl">💬</span>
-                     <span className="font-black text-sm text-white">{project.comments_count}</span>
-                  </div>
                </div>
-               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none"></div>
+            )}
+
+            {/* TRENDING SECTION */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-32">
+               <TrendingColumn title="Most Upvoted" icon="⚡" color="neon-gold" data={data.topVoted} />
+               <TrendingColumn title="Most Discussed" icon="💬" color="neon-blue" data={data.topCommented} />
+               <TrendingColumn title="Top Reposts" icon="🔁" color="neon-purple" data={data.topReposted} />
             </div>
-            <div className="flex items-center justify-between px-6">
-               <div className="flex-1 min-w-0 pr-4">
-                  <h4 className="font-black text-2xl tracking-tight text-white group-hover/card:text-neon-blue transition-colors mb-2 truncate">{project.title}</h4>
-                  <div className="flex items-center gap-3">
-                     <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{project.category}</span>
-                     <span className="w-1 h-1 rounded-full bg-gray-700"></span>
-                     <span className="text-[10px] text-neon-purple font-black uppercase tracking-widest">{project.author_name}</span>
+
+            {/* DISCOVERY SECTION */}
+            <div className="relative">
+               <div className="flex flex-col md:flex-row items-center justify-between mb-12 gap-6 border-b border-white/5 pb-8">
+                  <div>
+                     <h3 className="text-3xl font-black uppercase tracking-tight text-white mb-2">Discovery Feed</h3>
+                     <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-gray-500">
+                        <span className="w-2 h-2 bg-neon-green rounded-full animate-pulse"></span>
+                        Live Network Activity
+                     </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 bg-glass-light p-1.5 rounded-xl border border-white/5">
+                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-3">Sector Filter</span>
+                     <select
+                        className="bg-black/40 hover:bg-black/60 border border-white/10 rounded-lg px-4 py-2 text-xs font-mono uppercase text-white focus:outline-none focus:border-neon-blue/50 cursor-pointer transition-colors"
+                        value={categoryFilter}
+                        onChange={(e) => setCategoryFilter(e.target.value)}
+                     >
+                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                     </select>
                   </div>
                </div>
-               <div className="flex flex-col items-end opacity-50 group-hover:opacity-100 transition-opacity">
-                  <div className="flex items-center gap-1 text-[11px] font-black text-gray-300">
-                     <span>👁️</span> {(project.id * 89) % 100}k
+
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                  {filteredWork.length > 0 ? filteredWork.map(project => (
+                     <ProjectCard key={project.id} project={project} />
+                  )) : (
+                     <div className="col-span-full py-32 text-center glass-panel border-dashed border-white/10 opacity-60">
+                        <p className="text-4xl mb-4">📡</p>
+                        <p className="text-xl font-black uppercase tracking-widest text-gray-500">No Signals Detected</p>
+                        <p className="text-sm font-mono text-gray-600 mt-2">Try adjusting your sector filter.</p>
+                     </div>
+                  )}
+               </div>
+
+               {/* LOAD MORE */}
+               <div className="mt-20 text-center">
+                  <Link to="/community">
+                     <Button variant="outline" size="lg" className="rounded-full px-12">
+                        View Global Nexus
+                     </Button>
+                  </Link>
+               </div>
+
+               {/* LEADERBOARD SECTION */}
+               <div className="mt-40">
+                  <div className="text-center mb-16 relative">
+                     <h3 className="text-5xl md:text-8xl font-black tracking-tighter mb-4 text-transparent bg-clip-text bg-gradient-to-b from-white to-transparent opacity-20 absolute top-[-50%] left-0 right-0 pointer-events-none">
+                        LEADERBOARD
+                     </h3>
+                     <h3 className="text-3xl md:text-5xl font-black tracking-tight relative z-10">Consensus Rankings</h3>
+                     <p className="text-neon-blue font-mono uppercase tracking-widest text-xs mt-4">Top Contributors by Trust Score</p>
+                  </div>
+
+                  <div className="glass-panel p-1 shadow-2xl border-white/5 rounded-3xl overflow-hidden">
+                     <table className="w-full text-left border-collapse">
+                        <thead>
+                           <tr className="border-b border-white/5 bg-white/[0.02]">
+                              <th className="p-6 text-[10px] font-black uppercase tracking-widest text-gray-500 w-24 text-center">Rank</th>
+                              <th className="p-6 text-[10px] font-black uppercase tracking-widest text-gray-500">Architect</th>
+                              <th className="p-6 text-[10px] font-black uppercase tracking-widest text-gray-500 text-right">Trust Score</th>
+                           </tr>
+                        </thead>
+                        <tbody>
+                           {data.leaderboard.map((u, idx) => (
+                              <tr key={idx} className="group hover:bg-white/[0.03] transition-colors border-b border-white/5 last:border-0 relative">
+                                 <td className="p-6 text-center">
+                                    <span className={`font-mono text-xl font-bold ${idx < 3 ? 'text-neon-gold drop-shadow-neon' : 'text-gray-600'}`}>
+                                       {(idx + 1).toString().padStart(2, '0')}
+                                    </span>
+                                 </td>
+                                 <td className="p-6">
+                                    <div className="flex items-center gap-4">
+                                       <div className="w-12 h-12 rounded-xl bg-slate-900 border border-white/10 flex items-center justify-center text-lg font-black group-hover:border-neon-blue/50 transition-colors">
+                                          {u.username?.charAt(0).toUpperCase() || "?"}
+                                       </div>
+                                       <div>
+                                          <div className="flex items-center gap-3">
+                                             <span className="font-bold text-lg text-white group-hover:text-neon-blue transition-colors">{u.username || "Anonymous"}</span>
+                                             <span className={`px-2 py-0.5 rounded text-[8px] font-black ${getRank(u.level ?? 1).color.split(' ')[0]} text-white/90`}>
+                                                {getRank(u.level ?? 1).name}
+                                             </span>
+                                          </div>
+                                          <span className="text-[10px] font-mono text-gray-500 uppercase">Level {u.level ?? 1}</span>
+                                       </div>
+                                    </div>
+                                 </td>
+                                 <td className="p-6 text-right">
+                                    <span className="font-mono text-2xl font-bold text-white tracking-tighter">{(u.xp ?? 0).toLocaleString()}</span>
+                                    <span className="text-[10px] text-gray-600 ml-2 uppercase">XP</span>
+                                 </td>
+                              </tr>
+                           ))}
+                        </tbody>
+                     </table>
                   </div>
                </div>
+
+               {/* FINAL CTA */}
+               <div className="mt-40 mb-20 text-center relative max-w-4xl mx-auto">
+                  <div className="absolute inset-0 bg-neon-purple/20 blur-[100px] rounded-full pointer-events-none"></div>
+                  <div className="glass-panel p-16 md:p-24 border-white/10 relative overflow-hidden group rounded-[3rem]">
+                     <div className="relative z-10">
+                        <h3 className="text-4xl md:text-6xl font-black tracking-tight mb-8">Ready to Deploy?</h3>
+                        <p className="text-gray-400 text-xl mb-12 max-w-2xl mx-auto leading-relaxed">
+                           Join {data.stats.totalDevelopers}+ architects in the most trusted decentralized contribution network.
+                        </p>
+                        <Link to="/submit">
+                           <Button variant="primary" size="lg" className="rounded-full px-16 py-6 text-lg shadow-neon-blue">
+                              Initiate Sequence 🚀
+                           </Button>
+                        </Link>
+                     </div>
+
+                     {/* Background Grid Animation */}
+                     <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20 group-hover:scale-110 transition-transform duration-[3s]"></div>
+                  </div>
+               </div>
+
             </div>
          </div>
-      </Link>
+
+         <ChatModal
+            isOpen={chatOpen}
+            onClose={() => setChatOpen(false)}
+            recipientId={data.featuredUser?.id}
+            recipientName={data.featuredUser?.username}
+         />
+      </div>
    );
 }
 
-function ProjectMiniCard({ project, icon, color }) {
-   const colorClass = color === 'neon-gold' ? 'text-neon-gold border-neon-gold/20 bg-neon-gold/5' : color === 'neon-blue' ? 'text-neon-blue border-neon-blue/20 bg-neon-blue/5' : 'text-neon-purple border-neon-purple/20 bg-neon-purple/5';
-   
+function StatItem({ label, value, color = "text-white", isText = false }) {
    return (
-    <Link to={`/project/${project.id}`} className="block group/mini">
-       <div className="glass-panel p-5 flex items-center gap-5 hover:border-white/20 transition-all group-hover/mini:-translate-y-1 bg-white/[0.02] border-white/5 shadow-xl">
-          <div className="w-20 h-16 rounded-[1rem] overflow-hidden bg-gray-900 shrink-0 border border-white/5 relative">
-             {project.media_url ? <img src={project.media_url} className="w-full h-full object-cover transition-transform group-hover/mini:scale-110" /> : <div className="w-full h-full flex items-center justify-center text-xs opacity-20 font-black tracking-tighter">DATA</div>}
-          </div>
-          <div className="flex-1 min-w-0">
-             <h4 className="text-base font-black text-white truncate group-hover/mini:text-neon-blue transition-colors mb-1">{project.title}</h4>
-             <p className="text-[9px] text-gray-500 uppercase font-black tracking-[0.2em]">{project.author_name}</p>
-          </div>
-          <div className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl border ${colorClass} transition-all group-hover/mini:scale-110 shadow-lg`}>
-             <span className="text-lg leading-none mb-0.5">{icon}</span>
-             <span className="font-black text-[10px] leading-none">
-                {icon === '⚡' ? project.total_votes : icon === '💬' ? project.comments_count : project.reposts_count}
-             </span>
-          </div>
-       </div>
-    </Link>
+      <div className="text-left group/stat">
+         <p className="text-gray-500 uppercase font-mono font-bold text-[10px] tracking-widest mb-1 group-hover/stat:text-neon-blue transition-colors">{label}</p>
+         <p className={`text-3xl font-black ${color} tracking-tighter`}>
+            {isText ? value : value.toLocaleString()}
+         </p>
+      </div>
    );
 }
 
-function Badge({ icon, title, color }) {
+function TrendingColumn({ title, icon, color, data }) {
    return (
-      <div className={`px-4 py-2 bg-black/40 border ${color} rounded-xl flex items-center gap-3 transition-transform hover:scale-105 cursor-default`}>
-         <span className="text-lg">{icon}</span>
-         <span className="text-[10px] font-black uppercase tracking-widest text-white">{title}</span>
+      <div className="flex flex-col gap-6">
+         <div className="flex items-center gap-4 pb-4 border-b border-white/5">
+            <span className={`text-2xl p-2 rounded-lg bg-${color}/10 border border-${color}/20`}>{icon}</span>
+            <h3 className="font-bold uppercase tracking-widest text-sm text-gray-300">{title}</h3>
+         </div>
+         <div className="flex flex-col gap-4">
+            {data.map(project => (
+               <ProjectMiniCard key={project.id} project={project} icon={icon} color={color} />
+            ))}
+         </div>
       </div>
    );
 }
