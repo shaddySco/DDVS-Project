@@ -8,7 +8,7 @@ use App\Http\Controllers\{
     VerificationController, PublicVerificationController, LandingController,
     CommunityController, CommentController, CommentLikeController,
     RepostController, ProfileController, UserController, FollowController,
-    MessageController
+    MessageController, NewsController
 };
 
 /* --- Public Routes --- */
@@ -20,6 +20,8 @@ Route::get('/submissions/{id}', [SubmissionController::class, 'show']);
 Route::get('/submissions/{id}/comments', [CommentController::class, 'index']);
 Route::get('/verify/{submission}', [PublicVerificationController::class, 'show']);
 Route::get('/users/{id}', [UserController::class, 'show']);
+Route::get('/news', [NewsController::class, 'index']); // Public News Feed
+Route::get('/news/{id}', [NewsController::class, 'show']);
 
 /* --- Authenticated Routes --- */
 Route::middleware('auth:sanctum')->group(function () {
@@ -58,4 +60,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/submissions/{submission}/verify-ownership', [VerificationController::class, 'verifyOwnership']);
     Route::post('/submissions/{submission}/dispute', [DisputeController::class, 'store']);
+
+    // Admin News Management
+    Route::post('/news', [NewsController::class, 'store']);
+    Route::put('/news/{id}', [NewsController::class, 'update']);
+    Route::delete('/news/{id}', [NewsController::class, 'destroy']);
 });

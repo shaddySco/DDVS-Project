@@ -26,7 +26,7 @@ class LandingController extends Controller
         // Latest Submissions
         $latest = Submission::with('user')
             ->latest()
-            ->take(6)
+            ->take(100)
             ->get();
 
         $formatSub = function($sub) {

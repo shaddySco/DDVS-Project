@@ -58,69 +58,72 @@ export default function Submit() {
     }
   };
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  setError("");
-  console.log("Step 1: Submit Started");
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    console.log("Step 1: Submit Started");
 
-  try {
-    const formData = new FormData();
-    formData.append("title", form.title);
-    formData.append("category", form.category);
-    formData.append("description", form.description);
-    formData.append("repository_url", form.repository_url);
-    if (form.media) {
-      formData.append("media", form.media);
+    try {
+      const formData = new FormData();
+      formData.append("title", form.title);
+      formData.append("category", form.category);
+      formData.append("description", form.description);
+      formData.append("repository_url", form.repository_url);
+      if (form.media) {
+        formData.append("media", form.media);
+      }
+
+      console.log("Step 2: Sending to Laravel Backend...");
+      const res = await axios.post("/projects", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      const projectId = res.data.id;
+      console.log("Step 3: Backend Success! Project ID:", projectId);
+
+      if (!signer) {
+        throw new Error("Wallet not connected correctly. Please reconnect.");
+      }
+
+      console.log("Step 4: Opening MetaMask for Blockchain...");
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+      // Check if CONTRACT_ADDRESS is correct
+      console.log("Using Contract Address:", CONTRACT_ADDRESS);
+
+      const tx = await contract.registerProject(projectId, form.repository_url);
+      console.log("Step 5: Transaction Sent! Hash:", tx.hash);
+
+      await tx.wait();
+      console.log("Step 6: Transaction Confirmed on Blockchain!");
+
+      // ✅ Update backend with the transaction hash
+      await axios.post(`/projects/${projectId}/verify`, { tx_hash: tx.hash });
+
+      navigate("/dashboard");
+    } catch (err) {
+      console.error("DEBUG ERROR:", err); // Look for this in the Console!
+
+      if (err.response && err.response.status === 422) {
+        setError("Backend Validation Failed: Check your fields.");
+      } else if (err.code === "ACTION_REJECTED") {
+        setError("User rejected the transaction in MetaMask.");
+      } else {
+        setError(err.message || "An unexpected error occurred.");
+      }
+    } finally {
+      setLoading(false);
     }
-
-    console.log("Step 2: Sending to Laravel Backend...");
-    const res = await axios.post("/projects", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-
-    const projectId = res.data.id;
-    console.log("Step 3: Backend Success! Project ID:", projectId);
-
-    if (!signer) {
-      throw new Error("Wallet not connected correctly. Please reconnect.");
-    }
-
-    console.log("Step 4: Opening MetaMask for Blockchain...");
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-    
-    // Check if CONTRACT_ADDRESS is correct
-    console.log("Using Contract Address:", CONTRACT_ADDRESS);
-
-    const tx = await contract.registerProject(projectId, form.repository_url);
-    console.log("Step 5: Transaction Sent! Hash:", tx.hash);
-
-    await tx.wait();
-    console.log("Step 6: Transaction Confirmed on Blockchain!");
-
-    navigate("/dashboard");
-  } catch (err) {
-    console.error("DEBUG ERROR:", err); // Look for this in the Console!
-    
-    if (err.response && err.response.status === 422) {
-      setError("Backend Validation Failed: Check your fields.");
-    } else if (err.code === "ACTION_REJECTED") {
-      setError("User rejected the transaction in MetaMask.");
-    } else {
-      setError(err.message || "An unexpected error occurred.");
-    }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   if (!walletAddress) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <div className="glass-panel p-8 text-center max-w-md">
-           <h2 className="text-2xl font-bold text-white mb-4">Access Restricted</h2>
-           <p className="text-gray-400 mb-6">Please connect your wallet to submit a project to the decentralized registry.</p>
-           {/* Wallet connection is handled in navbar, so we just show message */}
+          <h2 className="text-2xl font-bold text-white mb-4">Access Restricted</h2>
+          <p className="text-gray-400 mb-6">Please connect your wallet to submit a project to the decentralized registry.</p>
+          {/* Wallet connection is handled in navbar, so we just show message */}
         </div>
       </div>
     );
@@ -136,60 +139,60 @@ export default function Submit() {
       </div>
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+
         {/* LEFT COLUMN: FORM INPUTS */}
         <div className="lg:col-span-2 glass-panel p-8">
-           <div className="space-y-6">
-             <div>
-               <label className="block text-sm text-gray-400 mb-2">Project Title</label>
-               <input 
-                 name="title" 
-                 className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-neon-blue focus:ring-1 focus:ring-neon-blue focus:outline-none transition-all"
-                 placeholder="e.g. Neural Network Optimizer" 
-                 onChange={handleChange} 
-                 required 
-               />
-             </div>
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">Project Title</label>
+              <input
+                name="title"
+                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-neon-blue focus:ring-1 focus:ring-neon-blue focus:outline-none transition-all"
+                placeholder="e.g. Neural Network Optimizer"
+                onChange={handleChange}
+                required
+              />
+            </div>
 
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <div>
-                 <label className="block text-sm text-gray-400 mb-2">Category</label>
-                 <select 
-                   name="category" 
-                   value={form.category} 
-                   onChange={handleChange}
-                   className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-neon-blue focus:outline-none appearance-none"
-                 >
-                   {categories.map(cat => (
-                     <option key={cat} value={cat}>{cat}</option>
-                   ))}
-                 </select>
-               </div>
-               <div>
-                 <label className="block text-sm text-gray-400 mb-2">Repository URL</label>
-                 <input 
-                   name="repository_url" 
-                   type="url" 
-                   className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-neon-blue focus:outline-none"
-                   placeholder="https://github.com/..." 
-                   onChange={handleChange} 
-                   required 
-                 />
-               </div>
-             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Category</label>
+                <select
+                  name="category"
+                  value={form.category}
+                  onChange={handleChange}
+                  className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-neon-blue focus:outline-none appearance-none"
+                >
+                  {categories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Repository URL</label>
+                <input
+                  name="repository_url"
+                  type="url"
+                  className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-neon-blue focus:outline-none"
+                  placeholder="https://github.com/..."
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
 
-             <div>
-               <label className="block text-sm text-gray-400 mb-2">Description</label>
-               <textarea 
-                 name="description" 
-                 rows="6" 
-                 className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-neon-blue focus:outline-none resize-none"
-                 placeholder="What makes this project special?" 
-                 onChange={handleChange} 
-                 required 
-               />
-             </div>
-           </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">Description</label>
+              <textarea
+                name="description"
+                rows="6"
+                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-neon-blue focus:outline-none resize-none"
+                placeholder="What makes this project special?"
+                onChange={handleChange}
+                required
+              />
+            </div>
+          </div>
         </div>
 
         {/* RIGHT COLUMN: MEDIA UPLOAD & SUBMIT */}
@@ -197,18 +200,18 @@ export default function Submit() {
           <div className="glass-panel p-6">
             <h3 className="text-lg font-bold text-gray-300 mb-4">Project Visual (Optional)</h3>
             <div className="relative w-full aspect-video rounded-lg border-2 border-dashed border-white/20 bg-black/20 hover:border-neon-purple hover:bg-black/30 transition-all flex items-center justify-center overflow-hidden group">
-              <input 
-                type="file" 
-                name="media" 
-                accept="image/*,video/*" 
-                onChange={handleChange} 
+              <input
+                type="file"
+                name="media"
+                accept="image/*,video/*,.mkv,.mov,.avi,.wmv,.m4v,.flv,.webp"
+                onChange={handleChange}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
               />
               {preview ? (
-                form.media?.type.startsWith('video/') ? (
-                   <video src={preview} className="w-full h-full object-cover" controls />
+                (form.media?.type.startsWith('video/') || /\.(mp4|webm|ogg|mov|avi|mkv|wmv|m4v|flv)$/i.test(form.media?.name)) ? (
+                  <video src={preview} className="w-full h-full object-cover" controls />
                 ) : (
-                   <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+                  <img src={preview} alt="Preview" className="w-full h-full object-cover" />
                 )
               ) : (
                 <div className="text-center p-4">
@@ -226,10 +229,10 @@ export default function Submit() {
                 <span>{error}</span>
               </div>
             )}
-            
-            <Button 
-              type="submit" 
-              variant="primary" 
+
+            <Button
+              type="submit"
+              variant="primary"
               className="w-full py-4 text-lg shadow-neon-blue"
               disabled={loading}
             >

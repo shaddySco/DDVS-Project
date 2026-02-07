@@ -30,66 +30,98 @@ public function index(Request $request) {
     });
 }
   
-public function feed(Request $request)
-{
-    $user = $request->user();
-    $type = $request->query('type', 'global');
+    public function feed(Request $request)
+    {
+        $user = auth('sanctum')->user();
+        $type = $request->query('type', 'global');
+        $search = $request->query('search');
+        $category = $request->query('category');
 
-    $submissions = Submission::query()
-        ->join('users', 'submissions.user_id', '=', 'users.id')
-        ->select([
-            DB::raw("CONCAT('submission-', submissions.id) as feed_id"),
-            'submissions.id',
-            'submissions.user_id',
-            'submissions.title',
-            'submissions.description',
-            'submissions.media_url',
-            'submissions.category',
-            'submissions.created_at',
-            DB::raw("COALESCE(users.username, users.name, 'Anonymous') as author_name"),
-            DB::raw('(SELECT COUNT(*) FROM comments WHERE comments.submission_id = submissions.id) as comments_count'),
-            DB::raw('(SELECT COUNT(*) FROM votes WHERE votes.submission_id = submissions.id) as total_votes'),
-            DB::raw('(SELECT COUNT(*) FROM reposts WHERE reposts.submission_id = submissions.id) as reposts_count'),
-            DB::raw('false as is_repost'),
-            DB::raw('null as reposted_by'),
-            DB::raw('null as reposted_at'),
-        ]);
+        // 1. Base query for Submissions
+        $submissionsQuery = Submission::with(['user', 'votes', 'comments', 'reposts'])
+            ->where('ownership_status', 'verified');
 
-    $reposts = Repost::query()
-        ->join('submissions', 'reposts.submission_id', '=', 'submissions.id')
-        ->join('users', 'submissions.user_id', '=', 'users.id')
-        ->select([
-            DB::raw("CONCAT('repost-', reposts.id) as feed_id"),
-            'submissions.id',
-            'submissions.user_id',
-            'submissions.title',
-            'submissions.description',
-            'submissions.media_url',
-            'submissions.category',
-            'reposts.created_at',
-            DB::raw("COALESCE(users.username, users.name, 'Anonymous') as author_name"),
-            DB::raw('(SELECT COUNT(*) FROM comments WHERE comments.submission_id = submissions.id) as comments_count'),
-            DB::raw('(SELECT COUNT(*) FROM votes WHERE votes.submission_id = submissions.id) as total_votes'),
-            DB::raw('(SELECT COUNT(*) FROM reposts WHERE reposts.submission_id = submissions.id) as reposts_count'),
-            DB::raw('true as is_repost'),
-            'reposts.user_id as reposted_by',
-            'reposts.created_at as reposted_at',
-        ]);
+        // 2. Base query for Reposts
+        $repostsQuery = Repost::with(['submission.user', 'user', 'submission.votes', 'submission.comments', 'submission.reposts'])
+            ->whereHas('submission', function($q) {
+                $q->where('ownership_status', 'verified');
+            });
 
-    if ($type === 'following' && $user) {
-$followedIds = $user->following()->pluck('user_id');        $submissions->whereIn('submissions.user_id', $followedIds);
-        $reposts->whereIn('reposts.user_id', $followedIds);
+        // 3. Filters
+        if ($type === 'connections' && $user) {
+            $followingIds = $user->following()->pluck('id');
+            $followerIds = $user->followers()->pluck('id');
+            $connectionIds = $followingIds->concat($followerIds)->push($user->id)->unique();
+
+            $submissionsQuery->whereIn('user_id', $connectionIds);
+            $repostsQuery->whereIn('user_id', $connectionIds);
+        }
+
+        if ($search) {
+            $submissionsQuery->where(function($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('category', 'like', "%{$search}%");
+            });
+            $repostsQuery->whereHas('submission', function($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('category', 'like', "%{$search}%");
+            });
+        }
+
+        if ($category && $category !== 'All Categories') {
+            $submissionsQuery->where('category', $category);
+            $repostsQuery->whereHas('submission', function($q) use ($category) {
+                $q->where('category', $category);
+            });
+        }
+
+        // 4. Fetch and Combine
+        $submissions = $submissionsQuery->latest()->get()->map(function($sub) {
+            return $this->formatFeedItem($sub, false);
+        });
+
+        $reposts = $repostsQuery->latest()->get()->map(function($repost) {
+            return $this->formatFeedItem($repost->submission, true, $repost);
+        });
+
+        // 5. Merge and Sort
+        $combined = $submissions->concat($reposts)
+            ->sortByDesc('sort_date')
+            ->values();
+
+        return response()->json($combined);
     }
 
-    $union = $submissions->unionAll($reposts);
+    private function formatFeedItem($sub, $isRepost, $repostObject = null)
+    {
+        $hasVoted = false;
+        if (auth('sanctum')->check()) {
+            $hasVoted = $sub->votes()->where('voter_id', auth('sanctum')->id())->exists();
+        }
 
-    $feed = DB::query()
-        ->fromSub($union, 'feed')
-        ->orderByDesc('created_at')
-        ->paginate(10);
-
-    return response()->json($feed);
-}
+        return [
+            'id' => $sub->id,
+            'title' => $sub->title,
+            'category' => $sub->category,
+            'description' => $sub->description,
+            'author_name' => $sub->user->display_name ?? 'Unknown Developer',
+            'user_id' => $sub->user_id,
+            'media_url' => $sub->media_path 
+                ? (str_starts_with($sub->media_path, 'images/') || str_starts_with($sub->media_path, '/images/') 
+                    ? asset($sub->media_path) 
+                    : asset('storage/' . $sub->media_path)) 
+                : null,
+            'total_votes' => $sub->votes->count(),
+            'comments_count' => $sub->comments->count(),
+            'reposts_count' => $sub->reposts->count(),
+            'has_voted' => $hasVoted,
+            'created_at' => $sub->created_at->toFormattedDateString(),
+            'sort_date' => $isRepost ? $repostObject->created_at : $sub->created_at,
+            'is_repost' => $isRepost,
+            'reposted_by_name' => $isRepost ? ($repostObject->user->display_name ?? 'Someone') : null,
+            'reposted_at' => $isRepost ? $repostObject->created_at->diffForHumans() : null,
+        ];
+    }
 
 
     /**

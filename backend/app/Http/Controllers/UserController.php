@@ -43,6 +43,7 @@ class UserController extends Controller
             'bio' => $user->bio,
             'skills' => $user->skills,
             'developer_type' => $user->developer_type,
+            'role' => $user->role,
             'level' => $user->level,
             'xp' => $user->xp,
             'focus_sector' => $focusSector,

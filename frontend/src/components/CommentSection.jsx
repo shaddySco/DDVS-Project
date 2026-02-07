@@ -41,7 +41,6 @@ export default function CommentSection({ submissionId }) {
   const likeComment = async (commentId) => {
     try {
       await axios.post(`/comments/${commentId}/like`);
-      // Optimistic update or refresh
       setComments(prev => prev.map(c =>
         c.id === commentId ? { ...c, likes_count: (c.likes_count || 0) + 1 } : c
       ));
@@ -53,46 +52,46 @@ export default function CommentSection({ submissionId }) {
   return (
     <div className="space-y-6">
       <h4 className="text-sm font-bold text-gray-400 uppercase tracking-widest">
-        Encrypted Transmission ({comments.length})
+        {comments.length} Comments
       </h4>
 
       {loading && (
-        <div className="flex items-center gap-2 text-neon-blue text-xs font-mono animate-pulse">
-          <span>Loading stream...</span>
+        <div className="text-neon-blue text-xs font-mono animate-pulse">
+          Loading comments...
         </div>
       )}
 
       {!loading && comments.length === 0 && (
-        <p className="text-sm text-gray-600 italic">No signals detected yet.</p>
+        <p className="text-sm text-gray-500 italic">No comments yet. Be the first to share your thoughts.</p>
       )}
 
-      <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+      <div className="space-y-6 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
         {comments.map(comment => (
-          <div key={comment.id} className="group border-b border-white/5 pb-4 last:border-0">
-            <div className="flex justify-between items-start mb-1">
-              <div className="flex items-center gap-2">
+          <div key={comment.id} className="group border-b border-white/5 pb-6 last:border-0 last:pb-0">
+            <div className="flex justify-between items-start mb-2">
+              <div className="flex items-center gap-3">
                 <span className="font-bold text-sm text-white group-hover:text-neon-blue transition-colors">
                   {comment.user?.username || "Unknown"}
                 </span>
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-gray-400 border border-white/5">
-                  LVL {comment.user?.xp ? Math.floor(comment.user.xp / 500) + 1 : 1}
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-gray-400">
+                  Level {comment.user?.xp ? Math.floor(comment.user.xp / 100) + 1 : 1}
                 </span>
               </div>
-              <span className="text-[9px] text-gray-600 font-mono">
+              <span className="text-xs text-gray-500">
                 {new Date(comment.created_at).toLocaleDateString()}
               </span>
             </div>
 
-            <p className="text-sm text-gray-300 leading-relaxed mb-2 opacity-90">
+            <p className="text-gray-300 leading-relaxed text-sm mb-3">
               {comment.content}
             </p>
 
             <button
               onClick={() => likeComment(comment.id)}
-              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-neon-gold transition-colors"
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-neon-blue transition-colors"
             >
               <span className="text-sm">👍</span>
-              <span className="font-mono">{comment.likes_count || 0}</span>
+              <span>{comment.likes_count || 0} Likes</span>
             </button>
           </div>
         ))}
@@ -100,26 +99,26 @@ export default function CommentSection({ submissionId }) {
 
       {/* ADD COMMENT */}
       {user ? (
-        <div className="space-y-3">
-          <div className="relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-neon-blue/30 to-neon-purple/30 rounded-lg blur opacity-0 group-focus-within:opacity-100 transition duration-500"></div>
+        <div className="mt-8">
+          <div className="relative group mb-3">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-neon-blue/20 to-neon-purple/20 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-500"></div>
             <textarea
-              className="relative w-full bg-black/40 border border-white/10 rounded-lg p-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-neon-blue/50 focus:bg-black/60 transition-all resize-none"
-              rows="2"
-              placeholder="Transmit your thoughts..."
+              className="relative w-full bg-[#0F172A] border border-white/10 rounded-xl p-4 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-blue/50 transition-all resize-none"
+              rows="3"
+              placeholder="Write a comment..."
               value={content}
               onChange={e => setContent(e.target.value)}
             />
           </div>
           <div className="flex justify-end">
-            <Button onClick={submitComment} size="sm" variant="secondary" className="text-xs uppercase tracking-widest">
-              Transmit
+            <Button onClick={submitComment} size="sm" variant="secondary" className="px-6">
+              Post Comment
             </Button>
           </div>
         </div>
       ) : (
-        <div className="p-4 rounded-lg bg-white/5 border border-white/5 text-center">
-          <p className="text-xs text-gray-400 mb-2">Connect your neural link to transmit.</p>
+        <div className="p-6 rounded-xl bg-white/5 border border-white/5 text-center mt-8">
+          <p className="text-sm text-gray-400 mb-2">Please login to join the discussion.</p>
         </div>
       )}
     </div>

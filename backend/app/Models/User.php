@@ -13,7 +13,7 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory;
 
     // This ensures 'level' is included when the user is sent to React
-    protected $appends = ['level', 'followers_count', 'following_count', 'display_name', 'focus_sector'];
+    protected $appends = ['level', 'followers_count', 'following_count', 'display_name', 'focus_sector', 'submissions_count'];
 
    protected $fillable = [
     'name',
@@ -26,6 +26,7 @@ class User extends Authenticatable
     'developer_type',
     'xp',      // Ensure this is here
     'level',   // Ensure this is here
+    'role',    // Added role
 ];
 
     /**
@@ -92,8 +93,8 @@ class User extends Authenticatable
     // Votes cast by this user
     public function votes(): HasMany
     {
-        // Matches the 'user_id' column we fixed in your migrations
-        return $this->hasMany(Vote::class, 'user_id');
+        // Use 'voter_id' as per the votes table migration
+        return $this->hasMany(Vote::class, 'voter_id');
     }
 
     public function comments(): HasMany 
@@ -141,5 +142,10 @@ public function following(): BelongsToMany
 public function getFollowingCountAttribute(): int
 {
     return $this->following()->count();
+}
+
+public function getSubmissionsCountAttribute(): int
+{
+    return $this->submissions()->count();
 }
 }

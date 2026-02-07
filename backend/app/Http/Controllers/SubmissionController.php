@@ -15,7 +15,7 @@ class SubmissionController extends Controller
             'category' => 'required|string',
             'description' => 'required|string',
             'repository_url' => 'required|url',
-            'media' => 'nullable|file|mimes:jpg,jpeg,png,mp4,mov,avi|max:20480' // Optional, supports video, larger size
+            'media' => 'nullable|file|max:51200' // Increased to 50MB, allows any file (user specified any kind)
         ]);
 
         // 2. Handle File Upload
@@ -46,7 +46,11 @@ class SubmissionController extends Controller
     public function verify(Request $request, $id)
     {
         $submission = Submission::findOrFail($id);
-        $submission->update(['transaction_hash' => $request->tx_hash]);
+        $submission->update([
+            'transaction_hash' => $request->tx_hash,
+            'ownership_status' => 'verified',
+            'verified_at' => now()
+        ]);
         return response()->json(['status' => 'verified']);
     }
 
@@ -62,7 +66,7 @@ class SubmissionController extends Controller
         // Check if the current user has voted
         $hasVoted = false;
         if (auth('sanctum')->check()) {
-            $hasVoted = $submission->votes()->where('user_id', auth('sanctum')->id())->exists();
+            $hasVoted = $submission->votes()->where('voter_id', auth('sanctum')->id())->exists();
         }
 
         // Format the response to match your frontend needs
@@ -72,7 +76,11 @@ class SubmissionController extends Controller
             'category' => $submission->category,
             'description' => $submission->description,
             'repository_url' => $submission->repository_url,
-            'media_url' => $submission->media_path ? asset('storage/' . $submission->media_path) : null,
+            'media_url' => $submission->media_path 
+                ? (str_starts_with($submission->media_path, 'images/') || str_starts_with($submission->media_path, '/images/') 
+                    ? asset($submission->media_path) 
+                    : asset('storage/' . $submission->media_path)) 
+                : null,
             'transaction_hash' => $submission->transaction_hash,
             'author' => [
                 'id' => $submission->user->id ?? null,
@@ -95,7 +103,8 @@ class SubmissionController extends Controller
 
     public function index(Request $request)
 {
-    $query = Submission::with('user'); // Assumes a 'user' relationship in Submission model
+    $query = Submission::with('user')
+        ->where('ownership_status', 'verified'); // Only show verified projects in community feed
 
     // Handle search if provided
     if ($request->has('search')) {
@@ -106,21 +115,39 @@ class SubmissionController extends Controller
         });
     }
 
+    // Handle Category Filter
+    if ($request->has('category') && $request->category !== 'All Categories') {
+        $query->where('category', $request->category);
+    }
+
     // Handle Tabs (Following vs Global)
     if ($request->type === 'following' && auth()->check()) {
-        // If you have a followers system, filter here. 
-        // For now, let's just return nothing or a subset to show it works.
         $submissions = $query->whereIn('user_id', auth()->user()->following()->pluck('id'))->latest()->get();
     } else {
-        // Global: return everything
         $submissions = $query->latest()->get();
     }
 
-    // Format the data to match your frontend keys
-    $formatted = $submissions->map(function($sub) {
+    return $this->formatSubmissions($submissions);
+}
+
+// Added missing method for Dashboard
+public function mySubmissions()
+{
+    $submissions = Submission::with('user')
+        ->where('user_id', Auth::id())
+        ->latest()
+        ->get();
+
+    return $this->formatSubmissions($submissions);
+}
+
+// Helper to avoid code duplication
+private function formatSubmissions($submissions)
+{
+    return response()->json($submissions->map(function($sub) {
         $hasVoted = false;
         if (auth('sanctum')->check()) {
-            $hasVoted = $sub->votes()->where('user_id', auth('sanctum')->id())->exists();
+            $hasVoted = $sub->votes()->where('voter_id', auth('sanctum')->id())->exists();
         }
 
         return [
@@ -130,15 +157,18 @@ class SubmissionController extends Controller
             'description' => $sub->description,
             'author_name' => $sub->user->display_name ?? 'Unknown Developer',
             'user_id' => $sub->user_id,
-            'media_url' => $sub->media_path ? asset('storage/' . $sub->media_path) : null,
+            'media_url' => $sub->media_path 
+                ? (str_starts_with($sub->media_path, 'images/') || str_starts_with($sub->media_path, '/images/') 
+                    ? asset($sub->media_path) 
+                    : asset('storage/' . $sub->media_path)) 
+                : null,
             'total_votes' => $sub->votes()->count(),
             'comments_count' => $sub->comments()->count(),
             'reposts_count' => $sub->reposts()->count(),
             'has_voted' => $hasVoted,
             'created_at' => $sub->created_at->toFormattedDateString(),
+            'ownership_status' => $sub->ownership_status,
         ];
-    });
-
-    return response()->json($formatted);
+    }));
 }
 }
