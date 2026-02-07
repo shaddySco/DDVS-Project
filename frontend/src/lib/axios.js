@@ -11,7 +11,7 @@ const instance = axios.create({
 
 // THIS PART IS KEY: It attaches your token to every request
 instance.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('ddvs_token');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
