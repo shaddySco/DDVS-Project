@@ -13,7 +13,7 @@ const CONTRACT_ADDRESS = contractAddresses.DDVSSubmissions;
 const CONTRACT_ABI = DDVSSubmissionsABI.abi;
 
 export default function Submit() {
-  const { walletAddress, signer } = useAuth();
+  const { walletAddress, signer, user } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
