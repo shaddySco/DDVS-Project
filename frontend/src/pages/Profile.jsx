@@ -1,17 +1,16 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import axios from "../lib/axios";
 import SubmissionCard from "../components/SubmissionCard";
-import ChatModal from "../components/ChatModal";
 import Button from "../components/ui/Button";
 import RadarChart from "../components/RadarChart";
 import { useAuth } from "../context/AuthContext";
 
 export default function Profile() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [chatOpen, setChatOpen] = useState(false);
   const { user: currentUser } = useAuth();
 
   useEffect(() => {
@@ -85,7 +84,7 @@ export default function Profile() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setChatOpen(true)}
+                onClick={() => navigate(`/chat?user=${profile.id}`)}
               >
                 Contact Developer
               </Button>
@@ -183,13 +182,6 @@ export default function Profile() {
           </div>
         </div>
       </div>
-
-      <ChatModal
-        isOpen={chatOpen}
-        onClose={() => setChatOpen(false)}
-        recipientId={profile.id}
-        recipientName={profile.username}
-      />
     </div>
   );
 }

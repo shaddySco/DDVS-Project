@@ -58,6 +58,6 @@ class Submission extends Model
     public function isVerified(): bool
     {
         return $this->ownership_status === 'verified'
-            && !is_null($this->ver_);
+            && !is_null($this->verified_at);
     }
     }

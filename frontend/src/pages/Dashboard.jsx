@@ -3,15 +3,23 @@ import { useAuth } from "../context/AuthContext";
 import axios from "../lib/axios";
 import Button from "../components/ui/Button";
 import AdminNewsManager from "../components/AdminNewsManager";
+import { getRankByXp, getNextRank } from "../utils/ranks";
 
 export default function Dashboard() {
   const { user, setUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const [mySubmissions, setMySubmissions] = useState([]);
+  const [submissionsLoading, setSubmissionsLoading] = useState(false);
+  const [submissionsError, setSubmissionsError] = useState("");
+
+  const currentRank = user ? getRankByXp(user.xp || 0) : null;
+  const nextRank = user ? getNextRank(user.xp || 0) : null;
 
   const [formData, setFormData] = useState({
     username: "",
+    github_username: "",
     developer_type: "",
     bio: "",
     skills: "",
@@ -25,6 +33,7 @@ export default function Dashboard() {
       if (!isEditing) {
         setFormData({
           username: res.data.username || "",
+          github_username: res.data.github_username || "",
           developer_type: res.data.developer_type || "",
           bio: res.data.bio || "",
           skills: res.data.skills || "",
@@ -40,9 +49,33 @@ export default function Dashboard() {
     }
   }, [setUser, isEditing]);
 
+
+
+  const fetchMySubmissions = useCallback(async () => {
+    setSubmissionsLoading(true);
+    setSubmissionsError("");
+    try {
+      const res = await axios.get("/submissions/mine");
+      setMySubmissions(res.data);
+    } catch (err) {
+      console.error("Error fetching submissions:", err);
+      setSubmissionsError(err.response?.data?.message || "Failed to load submissions");
+    } finally {
+      setSubmissionsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchProfile();
-  }, [fetchProfile]);
+    fetchMySubmissions(); // Load submissions for Overview too
+  }, [fetchProfile, fetchMySubmissions]);
+
+  // Fetch submissions when tab changes to "myProjects"
+  useEffect(() => {
+    if (activeTab === "myProjects") {
+      fetchMySubmissions();
+    }
+  }, [activeTab, fetchMySubmissions]);
 
   const handleUpdate = async (e) => {
     e.preventDefault();
@@ -75,18 +108,30 @@ export default function Dashboard() {
         <div className="flex-1 w-full">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <h1 className="text-4xl font-bold text-white tracking-tight">
+              <div className="flex items-center gap-4 mb-2">
+                <h1 className="text-4xl font-bold text-white tracking-tight flex items-center gap-3">
                   {user?.username || "Anonymous User"}
+                  {currentRank && (
+                    <span 
+                      className={`text-2xl w-10 h-10 flex items-center justify-center rounded-full bg-slate-800 border-2 ${currentRank.border} shadow-lg`}
+                      title={`Current Rank: ${currentRank.name}`}
+                    >
+                      {currentRank.icon}
+                    </span>
+                  )}
                 </h1>
-                <div className="flex gap-1">
-                  <span title="Top Contributor" className="text-xl">🏆</span>
-                  <span title="Verified Expert" className="text-xl">⭐</span>
-                  <span title="Protocol Guardian" className="text-xl">🛡️</span>
-                </div>
+                
+                {user?.verified_at && (
+                    <span className="text-xl" title="Verified Expert">⭐</span>
+                )}
               </div>
               <div className="flex items-center gap-3">
-                <p className="text-gray-400 font-medium text-lg">
+                {currentRank && (
+                   <span className={`text-xs font-bold px-2 py-0.5 rounded border ${currentRank.color} border-current bg-white/5 uppercase tracking-widest`}>
+                      {currentRank.name}
+                   </span>
+                )}
+                <p className="text-gray-400 font-medium text-lg border-l border-white/10 pl-3">
                   {user?.developer_type || "Developer"}
                 </p>
                 {user?.role === 'admin' && (
@@ -108,6 +153,11 @@ export default function Dashboard() {
           <div className="flex items-center gap-4 text-sm text-gray-500 font-mono mb-6">
             <span className="bg-white/5 px-3 py-1 rounded">
               {(user?.wallet_address || "").substring(0, 6)}...{(user?.wallet_address || "").substring(38)}
+            </span>
+            <span>•</span>
+            <span className={`flex items-center gap-1 bg-white/5 px-3 py-1 rounded ${user?.github_username ? 'text-green-400' : 'text-gray-500'}`}>
+              <span className="text-lg">🐙</span>
+              {user?.github_username ? `@${user.github_username} Verified` : 'GitHub Not Connected'}
             </span>
             <span>•</span>
             <span>Joined {new Date(user?.created_at || Date.now()).toLocaleDateString()}</span>
@@ -136,8 +186,8 @@ export default function Dashboard() {
               <div className="text-[10px] text-gray-500 uppercase tracking-widest">Following</div>
             </div>
             <div>
-              <div className="text-xl font-bold text-neon-blue">{user?.role === 'admin' ? 'S-Rank' : 'A-Rank'}</div>
-              <div className="text-[10px] text-gray-500 uppercase tracking-widest">Tier</div>
+              <div className={`text-xl font-bold ${currentRank?.color}`}>{currentRank?.name || "INITIATE"}</div>
+              <div className="text-[10px] text-gray-500 uppercase tracking-widest">Protocol Rank</div>
             </div>
           </div>
         </div>
@@ -150,6 +200,12 @@ export default function Dashboard() {
           className={`pb-4 text-sm font-bold uppercase tracking-wider transition-colors ${activeTab === "overview" ? "text-neon-blue border-b-2 border-neon-blue" : "text-gray-500 hover:text-white"}`}
         >
           Overview
+        </button>
+        <button
+          onClick={() => setActiveTab("myProjects")}
+          className={`pb-4 text-sm font-bold uppercase tracking-wider transition-colors ${activeTab === "myProjects" ? "text-neon-blue border-b-2 border-neon-blue" : "text-gray-500 hover:text-white"}`}
+        >
+          My Projects
         </button>
         {user?.role === 'admin' && (
           <button
@@ -188,6 +244,20 @@ export default function Dashboard() {
                       placeholder="e.g. Full Stack Developer"
                     />
                   </div>
+                </div>
+
+                <div className="mb-6 group">
+                  <label className="block text-gray-400 text-sm mb-2">GitHub Username</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-3.5 text-gray-500">github.com/</span>
+                    <input
+                      className="w-full bg-[#0F172A] border border-white/10 rounded-lg pl-[100px] pr-4 py-3 text-white focus:border-blue-500 focus:outline-none transition-all"
+                      value={formData.github_username}
+                      onChange={(e) => setFormData({ ...formData, github_username: e.target.value })}
+                      placeholder="username"
+                    />
+                  </div>
+                  <p className="text-[10px] text-gray-500 mt-2">Connecting your GitHub allows for easier identity verification on submissions.</p>
                 </div>
 
                 <div className="mb-6 group">
@@ -236,6 +306,96 @@ export default function Dashboard() {
                     )) : <span className="text-gray-500 italic">No skills listed.</span>}
                   </div>
                 </div>
+
+                {user?.category_xp && Object.keys(user.category_xp).length > 0 && (
+                  <div>
+                    <h3 className="text-xl font-bold text-white mb-4">Skill Reputation (SP Points)</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {Object.entries(user.category_xp).map(([cat, xp]) => (
+                        <div key={cat} className="glass-panel p-4 border border-white/5 bg-white/[0.02]">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm font-bold text-gray-300">{cat}</span>
+                            <span className="text-xs font-mono text-neon-blue">{xp} SP</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-blue-500 to-neon-blue" 
+                              style={{ width: `${Math.min(100, (xp % 100))}%` }}
+                            ></div>
+                          </div>
+                          <p className="text-[10px] text-gray-500 mt-2 uppercase tracking-tighter">Level {Math.floor(xp / 100) + 1}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* RECENT ACTIVITY / PROJECTS LIST */}
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                      Recent Activity
+                      <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded text-gray-500 font-mono">LATEST_WORK</span>
+                    </h3>
+                    <button 
+                      onClick={() => setActiveTab("myProjects")}
+                      className="text-xs text-neon-blue hover:underline font-bold"
+                    >
+                      View All →
+                    </button>
+                  </div>
+
+                  {mySubmissions.length > 0 ? (
+                    <div className="space-y-4">
+                      {mySubmissions.slice(0, 3).map((sub) => (
+                        <div key={sub.id} className="glass-panel p-4 border border-white/5 bg-white/[0.01] hover:bg-white/[0.03] transition-all flex items-center justify-between group">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-lg bg-slate-900 border border-white/10 flex items-center justify-center text-xl">
+                              {sub.category?.includes("Web") ? "🌐" : sub.category?.includes("Blockchain") ? "⛓️" : "📁"}
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-white group-hover:text-neon-blue transition-colors">{sub.title}</h4>
+                              <p className="text-xs text-gray-500">{sub.category} • {new Date(sub.created_at).toLocaleDateString()}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            {sub.ownership_status === "verified" ? (
+                              <span className="text-[10px] px-2 py-1 bg-green-500/10 text-green-400 border border-green-500/20 rounded uppercase font-bold tracking-widest">
+                                Verified
+                              </span>
+                            ) : (
+                              <span className="text-[10px] px-2 py-1 bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded uppercase font-bold tracking-widest">
+                                Unverified
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {mySubmissions.some(s => s.ownership_status !== 'verified') && (
+                        <div className="mt-4 p-4 bg-yellow-500/5 border border-yellow-500/20 rounded-xl flex items-start gap-4 animate-pulse">
+                          <span className="text-xl">⚠️</span>
+                          <div>
+                            <p className="text-xs font-bold text-yellow-500 uppercase tracking-widest mb-1">Action Required</p>
+                            <p className="text-[10px] text-gray-400 leading-relaxed">
+                              You have projects that are not yet verified. Only **Verified** projects appear in the Global Nexus and Community Hub. Click on "My Projects" to verify them via MetaMask.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-8 border border-dashed border-white/10 rounded-xl text-center">
+                      <p className="text-gray-500 text-sm">No submissions found. Start by deploying your first project!</p>
+                      <button 
+                         onClick={() => window.location.href = "/submit"}
+                         className="mt-4 text-xs font-bold text-neon-blue uppercase tracking-widest hover:text-white transition-colors"
+                      >
+                        + Submit Now
+                      </button>
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -265,6 +425,93 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {activeTab === "myProjects" && (
+        <div className="space-y-8">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-white">My Projects</h2>
+            <Button variant="primary" size="sm" onClick={() => window.location.href = '/submit'}>
+              + New Project
+            </Button>
+          </div>
+
+          {submissionsError && (
+            <div className="p-4 rounded bg-red-500/10 border border-red-500/30 text-red-500">
+              {submissionsError}
+            </div>
+          )}
+
+          {submissionsLoading ? (
+            <div className="text-center py-12">
+              <p className="text-gray-400">Loading your projects...</p>
+            </div>
+          ) : mySubmissions.length === 0 ? (
+            <div className="text-center py-12 border border-white/5 rounded-lg bg-black/30">
+              <p className="text-gray-400 mb-4">You haven't submitted any projects yet.</p>
+              <Button variant="primary" size="sm" onClick={() => window.location.href = '/submit'}>
+                Submit Your First Project
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {mySubmissions.map((submission) => (
+                <div 
+                  key={submission.id} 
+                  className="glass-panel p-6 rounded-lg border border-white/10 hover:border-neon-blue/50 transition-all cursor-pointer group hover:shadow-lg hover:shadow-neon-blue/20"
+                  onClick={() => window.location.href = `/project/${submission.id}`}
+                >
+                  {/* Media Preview */}
+                  {submission.media_url && (
+                    <div className="relative w-full h-40 rounded mb-4 overflow-hidden bg-black/40">
+                      <img 
+                        src={submission.media_url} 
+                        alt={submission.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Content */}
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-lg font-bold text-white group-hover:text-neon-blue transition-colors flex-1 break-words">
+                        {submission.title}
+                      </h3>
+                      <span className={`px-2 py-1 rounded text-xs font-bold whitespace-nowrap ${
+                        submission.ownership_status === 'verified' 
+                          ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                          : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                      }`}>
+                        {submission.ownership_status === 'verified' ? '✓ Verified' : '⏳ Pending'}
+                      </span>
+                    </div>
+
+                    <p className="text-gray-400 text-sm">
+                      {submission.category}
+                    </p>
+
+                    <p className="text-gray-300 text-sm line-clamp-2 break-words">
+                      {submission.description}
+                    </p>
+
+                    {/* Stats */}
+                    <div className="flex items-center justify-between pt-4 border-t border-white/5 text-xs text-gray-500">
+                      <span>👍 {submission.total_votes || 0}</span>
+                      <span>💬 {submission.comments_count || 0}</span>
+                      <span>🔄 {submission.reposts_count || 0}</span>
+                    </div>
+
+                    <p className="text-xs text-gray-600">
+                      {submission.created_at}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

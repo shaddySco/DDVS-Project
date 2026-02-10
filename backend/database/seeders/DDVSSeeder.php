@@ -37,7 +37,7 @@ class DDVSSeeder extends Seeder
             'title' => 'DDVS Protocol v1.0',
             'description' => 'The core decentralized verification system itself. A self-sovereign reputation layer for developers, powered by community consensus and immutable skill attestation.',
             'category' => 'Blockchain / Web3',
-            'media_path' => '/images/landing_screenshot.png', 
+            'media_path' => 'images/landing_screenshot.png',
             'repository_url' => 'https://github.com/ddvs/protocol',
             'ownership_status' => 'verified',
             'verified_at' => now(),

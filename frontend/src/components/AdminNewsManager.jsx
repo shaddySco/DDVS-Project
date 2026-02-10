@@ -7,10 +7,6 @@ const AdminNewsManager = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [editId, setEditId] = useState(null);
 
-    useEffect(() => {
-        fetchNews();
-    }, []);
-
     const fetchNews = async () => {
         try {
             const res = await axios.get('/news'); // This helps seeing what is public, but admin needs ALL news. 
@@ -22,6 +18,19 @@ const AdminNewsManager = () => {
             console.error("Error fetching news:", error);
         }
     };
+
+    useEffect(() => {
+        let mounted = true;
+        (async () => {
+            try {
+                const res = await axios.get('/news');
+                if (mounted) setNews(res.data.data);
+            } catch (error) {
+                console.error("Error fetching news:", error);
+            }
+        })();
+        return () => { mounted = false; };
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();

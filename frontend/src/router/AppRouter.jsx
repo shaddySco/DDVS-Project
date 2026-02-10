@@ -9,6 +9,7 @@ import Submit from "../pages/Submit";
 import Dashboard from "../pages/Dashboard";
 import Profile from "../pages/Profile";
 import PublicVerification from "../pages/PublicVerification";
+import Chat from "../pages/Chat";
 
 export default function AppRouter() {
   return (
@@ -33,6 +34,15 @@ export default function AppRouter() {
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/chat"
+            element={
+              <ProtectedRoute>
+                <Chat />
               </ProtectedRoute>
             }
           />

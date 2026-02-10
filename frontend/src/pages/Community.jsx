@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import axios from "../lib/axios";
 import SubmissionCard from "../components/SubmissionCard";
 import { Link } from "react-router-dom";
@@ -14,19 +14,16 @@ export default function Community() {
 
   const categories = [
     "All Categories",
-    "Social Media",
-    "Decentralized Identity",
-    "Finance / DeFi",
-    "AI / ML",
-    "Games / Metaverse",
-    "Tooling / Infrastructure",
+    "Machine Learning",
+    "Web Development",
+    "Blockchain / Web3",
     "Cybersecurity",
-    "NFT / Art",
-    "Analytics",
+    "Mobile Apps",
+    "AI / Data Science",
     "Other"
   ];
 
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     setLoading(true);
     try {
       const res = await axios.get("/community", {
@@ -44,11 +41,11 @@ export default function Community() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, search, categoryFilter]);
 
   useEffect(() => {
     fetchProjects();
-  }, [activeTab, categoryFilter]);
+  }, [activeTab, categoryFilter, fetchProjects]);
 
   // Debounced search effect
   useEffect(() => {
@@ -56,7 +53,7 @@ export default function Community() {
       fetchProjects();
     }, 500);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, fetchProjects]);
 
   const handleVote = async (id) => {
     try {

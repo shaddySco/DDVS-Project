@@ -7,6 +7,7 @@ import ProjectCard from "../components/ProjectCard";
 import ProjectMiniCard from "../components/ProjectMiniCard";
 import NewsSection from "../components/NewsSection";
 import { useAuth } from "../context/AuthContext";
+import { getRankByXp, RANKS } from "../utils/ranks";
 
 export default function Landing() {
    const { user } = useAuth();
@@ -36,16 +37,8 @@ export default function Landing() {
          .finally(() => setLoading(false));
    }, []);
 
-   const getRank = (level) => {
-      if (level >= 200) return { name: "ORACLE", color: "bg-red-500 shadow-md" };
-      if (level >= 100) return { name: "OVERSEER", color: "bg-purple-600 shadow-md" };
-      if (level >= 60) return { name: "ARCHITECT", color: "bg-blue-500 shadow-md" };
-      if (level >= 30) return { name: "VANGUARD", color: "bg-yellow-500 shadow-md" };
-      if (level >= 10) return { name: "SPECIALIST", color: "bg-green-500 shadow-md" };
-      return { name: "INITIATE", color: "bg-slate-600" };
-   };
-
    const focusSector = data.featuredUser?.focus_sector || "Generalist";
+   const featuredRank = data.featuredUser ? getRankByXp(data.featuredUser.xp || 0) : RANKS[0];
 
    const filteredWork = data.latest.filter(p => {
       const matchesCategory = categoryFilter === "All Categories" || p.category === categoryFilter;
@@ -85,9 +78,8 @@ export default function Landing() {
                            </div>
 
                            {/* Rank Badge */}
-                           <div className={`absolute -top-2 -right-2 w-14 h-14 rounded-full ${getRank(data.featuredUser.level ?? 1).color} flex flex-col items-center justify-center text-white shadow-lg font-bold text-[10px] border-4 border-[#0A0F1C] z-20`}>
-                              <span className="opacity-80 text-[8px] uppercase tracking-wider">LVL</span>
-                              <span className="text-xl leading-none">{data.featuredUser?.level ?? 1}</span>
+                           <div className={`absolute -top-2 -right-2 w-14 h-14 rounded-full ${featuredRank.bg} flex flex-col items-center justify-center text-white shadow-lg font-bold text-[10px] border-4 border-[#0A0F1C] z-20`}>
+                              <span className="text-2xl">{featuredRank.icon}</span>
                            </div>
                         </div>
 
@@ -97,8 +89,8 @@ export default function Landing() {
                               <div className="inline-block px-3 py-1 rounded-full border border-yellow-500/30 bg-yellow-500/5 text-yellow-500 text-[10px] font-bold uppercase tracking-widest shadow-sm flex items-center gap-2">
                                  <span>🏆</span> Global Top Contributor
                               </div>
-                              <div className={`px-3 py-1 rounded-full ${getRank(data.featuredUser.level ?? 1).color} text-white text-[10px] font-bold uppercase tracking-widest shadow-sm`}>
-                                 {getRank(data.featuredUser.level ?? 1).name}
+                              <div className={`px-3 py-1 rounded-full ${featuredRank.bg} text-white text-[10px] font-bold uppercase tracking-widest shadow-sm border ${featuredRank.border}`}>
+                                 {featuredRank.name}
                               </div>
                            </div>
 
@@ -174,6 +166,30 @@ export default function Landing() {
                      title="Merit-Based Reputation"
                      description="Your 'Trust Score' is built purely on contribution quality. No pay-to-win. Just pure, verifiable engineering impact."
                   />
+               </div>
+            </div>
+
+            {/* SYSTEM LEVELS EXPLANATION */}
+            <div className="mb-32">
+               <div className="text-center max-w-3xl mx-auto mb-16">
+                  <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">Developer Ranks</h2>
+                  <p className="text-gray-400 text-lg">
+                     Ascend the protocol hierarchy by earning XP through verified contributions.
+                  </p>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  {RANKS.map((rank) => (
+                     <div key={rank.name} className={`glass-panel p-6 border ${rank.border} bg-opacity-5 hover:scale-105 transition-transform duration-300 relative overflow-hidden group`}>
+                        <div className={`absolute top-0 left-0 w-full h-1 ${rank.bg}`}></div>
+                        <div className="text-4xl mb-4 text-center">{rank.icon}</div>
+                        <h3 className={`text-sm font-bold text-center mb-1 ${rank.color}`}>{rank.name}</h3>
+                        <p className="text-center text-[10px] font-mono text-gray-500 mb-3">{rank.minXp}+ XP</p>
+                        <p className="text-center text-[10px] text-gray-400 leading-tight">
+                           {rank.desc}
+                        </p>
+                     </div>
+                  ))}
                </div>
             </div>
 
@@ -272,7 +288,7 @@ export default function Landing() {
                                           </Link>
                                           {idx < 3 && <span className="text-xs">🏆</span>}
                                        </div>
-                                       <span className="text-xs text-gray-500">{getRank(u.level ?? 1).name}</span>
+                                       <span className={`text-xs ${getRankByXp(u.xp ?? 0).color}`}>{getRankByXp(u.xp ?? 0).name}</span>
                                     </div>
                                  </div>
                               </td>

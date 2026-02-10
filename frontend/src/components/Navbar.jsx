@@ -2,6 +2,7 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useEffect, useRef, useState } from "react";
 import Button from "./ui/Button";
+import axios from "../lib/axios";
 
 export default function Navbar() {
   const { walletAddress, connectWallet, logout, switchAccount, user } = useAuth();
@@ -9,6 +10,7 @@ export default function Navbar() {
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef(null);
 
   // Close dropdown on outside click
@@ -21,6 +23,30 @@ export default function Navbar() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  // Fetch unread message count
+  useEffect(() => {
+    if (user) {
+      const fetchUnreadCount = async () => {
+        try {
+          const res = await axios.get('/conversations');
+          const count = res.data.reduce((sum, chat) => sum + (chat.unread ? 1 : 0), 0);
+          setUnreadCount(count);
+        } catch (err) {
+          // Silently handle 401 errors - user might not be fully authenticated yet
+          if (err.response?.status === 401) {
+            console.log("Auth not ready for unread count check");
+          } else {
+            console.error("Fetch unread count error:", err);
+          }
+        }
+      };
+      fetchUnreadCount();
+      const interval = setInterval(fetchUnreadCount, 30000); // Poll every 30s
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
 
   const handleSwitch = async () => {
     setProfileOpen(false);
@@ -150,6 +176,21 @@ export default function Navbar() {
             <Button variant="primary" size="sm" onClick={connectWallet} className="shadow-neon-blue">
               Connect Wallet
             </Button>
+          )}
+
+          {/* CHATS BUTTON */}
+          {walletAddress && (
+            <Link
+              to="/chat"
+              className="relative w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-colors"
+            >
+              💬
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-neon-blue text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold animate-pulse">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </Link>
           )}
 
           {/* MOBILE MENU TOGGLE */}

@@ -6,7 +6,7 @@ const instance = axios.create({
         'X-Requested-With': 'XMLHttpRequest',
         'Accept': 'application/json',
     },
-    withCredentials: true,
+    // Removed withCredentials to prevent CORS conflicts with Bearer tokens
 });
 
 // THIS PART IS KEY: It attaches your token to every request
@@ -14,6 +14,10 @@ instance.interceptors.request.use((config) => {
     const token = localStorage.getItem('ddvs_token');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+        // Debug logging (remove in production)
+        console.log('🔑 Axios Interceptor: Token attached to', config.url);
+    } else {
+        console.warn('⚠️ Axios Interceptor: No token found for', config.url);
     }
     return config;
 });

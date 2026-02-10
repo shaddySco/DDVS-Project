@@ -47,11 +47,11 @@ export default function SubmissionCard({ submission, onVote, onRepost }) {
       );
     }
 
-    return (
-      <div className="mt-4 rounded-xl overflow-hidden border border-white/10 bg-black/40 aspect-video flex items-center justify-center relative shadow-lg group-hover:border-white/20 transition-colors">
-        <img src={url} alt={submission.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-      </div>
-    );
+      return (
+        <div className="mt-4 rounded-xl overflow-hidden border border-white/10 bg-black/40 aspect-video flex items-center justify-center relative shadow-lg group-hover:border-white/20 transition-colors">
+          <img src={url} alt={submission.title} className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105" />
+        </div>
+      );
   };
 
   return (

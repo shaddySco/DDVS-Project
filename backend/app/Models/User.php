@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Casts\AsCollection;
 
 class User extends Authenticatable
 {
@@ -15,19 +16,30 @@ class User extends Authenticatable
     // This ensures 'level' is included when the user is sent to React
     protected $appends = ['level', 'followers_count', 'following_count', 'display_name', 'focus_sector', 'submissions_count'];
 
-   protected $fillable = [
-    'name',
-    'email',
-    'password',
-    'wallet_address',
-    'username',
-    'bio',
-    'skills',
-    'developer_type',
-    'xp',      // Ensure this is here
-    'level',   // Ensure this is here
-    'role',    // Added role
-];
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+        'wallet_address',
+        'username',
+        'github_username',
+        'bio',
+        'skills',
+        'developer_type',
+        'xp',
+        'level',
+        'role',
+        'category_xp',
+        'skills_verified',
+    ];
+
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+        'category_xp' => 'array',
+        'skills_verified' => 'array',
+        'github_verified_at' => 'datetime',
+    ];
 
     /**
      * ATTRIBUTES
@@ -95,6 +107,12 @@ class User extends Authenticatable
     {
         // Use 'voter_id' as per the votes table migration
         return $this->hasMany(Vote::class, 'voter_id');
+    }
+
+    // Skill-specific reputation
+    public function skillReputation(): HasMany
+    {
+        return $this->hasMany(SkillReputation::class);
     }
 
     public function comments(): HasMany 

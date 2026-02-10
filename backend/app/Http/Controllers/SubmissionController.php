@@ -2,29 +2,116 @@
 namespace App\Http\Controllers;
 
 use App\Models\Submission;
+use App\Services\GitHubService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class SubmissionController extends Controller
 {
+    private $reputationService;
+
+    public function __construct(\App\Services\ReputationService $reputationService)
+    {
+        $this->reputationService = $reputationService;
+    }
+
     public function store(Request $request)
     {
-        // 1. Validation
-        $request->validate([
-            'title' => 'required|string',
-            'category' => 'required|string',
-            'description' => 'required|string',
+        // 1. Validation with detailed messages
+        $validated = $request->validate([
+            'title' => 'required|string|min:3|max:255',
+            'category' => 'required|string|in:Machine Learning,Web Development,Blockchain / Web3,Cybersecurity,Mobile Apps,AI / Data Science,Other',
+            'description' => 'required|string|min:10',
             'repository_url' => 'required|url',
-            'media' => 'nullable|file|max:51200' // Increased to 50MB, allows any file (user specified any kind)
+            'github_username' => 'nullable|string',
+            'media' => 'nullable|file|max:51200'
+        ], [
+            'title.required' => 'Project title is required.',
+            'title.min' => 'Project title must be at least 3 characters long.',
+            'category.required' => 'Category is required.',
+            'category.in' => 'Please select a valid category.',
+            'description.required' => 'Description is required.',
+            'description.min' => 'Description must be at least 10 characters long.',
+            'repository_url.required' => 'Repository URL is required.',
+            'repository_url.url' => 'Please enter a valid URL (e.g., https://github.com/...)',
+            'media.file' => 'Media must be a file.',
+            'media.max' => 'Media file size cannot exceed 50MB.'
         ]);
 
-        // 2. Handle File Upload
+        // 2. Validate GitHub repository if URL provided
+        $githubValidation = null;
+        if ($request->filled('repository_url')) {
+            try {
+                $githubService = new GitHubService();
+                $githubValidation = $githubService->validateRepository($request->repository_url);
+
+                // If validation fails, return error
+                if (!$githubValidation['valid']) {
+                    $errorMessage = $githubValidation['error'] ?? 'The repository URL may be invalid or private. Please ensure it is a valid, publicly accessible GitHub repository.';
+                    
+                    // Provide more specific error messages for common issues
+                    if (strpos($errorMessage, 'SSL') !== false || strpos($errorMessage, 'certificate') !== false) {
+                        $errorMessage = 'GitHub API connection issue. Please try again in a moment.';
+                    } elseif (strpos($errorMessage, 'timeout') !== false) {
+                        $errorMessage = 'GitHub API is taking too long to respond. Please try again.';
+                    }
+                    
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Invalid or inaccessible GitHub repository',
+                        'details' => $errorMessage
+                    ], 422);
+                }
+
+                // If GitHub username provided, verify contributions
+                if ($request->filled('github_username')) {
+                    $credibility = $githubService->verifySubmissionCredibility(
+                        $request->repository_url,
+                        $request->github_username
+                    );
+
+                    if (!$credibility['valid']) {
+                        $errorMessage = $credibility['error'] ?? 'Could not verify your GitHub contributions to this repository.';
+                        
+                        // Provide more specific error messages for common issues
+                        if (strpos($errorMessage, 'SSL') !== false || strpos($errorMessage, 'certificate') !== false) {
+                            $errorMessage = 'GitHub API connection issue while verifying contributions. Please try again.';
+                        } elseif (strpos($errorMessage, 'timeout') !== false) {
+                            $errorMessage = 'GitHub API is taking too long to respond while verifying contributions. Please try again.';
+                        }
+                        
+                        return response()->json([
+                            'status' => 'error',
+                            'message' => 'Could not verify GitHub contributions',
+                            'details' => $errorMessage
+                        ], 422);
+                    }
+
+                    $githubValidation = $credibility;
+                }
+            } catch (\Exception $e) {
+                // Catch any unexpected errors during GitHub validation
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'GitHub validation failed',
+                    'details' => 'Unable to validate the GitHub repository at this time. Please try again later.'
+                ], 422);
+            }
+        }
+
+        // 3. Handle File Upload
         $path = null;
         if ($request->hasFile('media')) {
             $path = $request->file('media')->store('projects', 'public');
         }
 
-        // 3. Create Database Entry
+        // Save GitHub username to user profile if provided and not already set
+        $user = Auth::user();
+        if ($request->filled('github_username') && (!$user->github_username || $user->github_username !== $request->github_username)) {
+            $user->update(['github_username' => $request->github_username]);
+        }
+
+        // 4. Create Database Entry
         $submission = Submission::create([
             'user_id' => Auth::id(), // Automatically get the logged-in user ID
             'title' => $request->title,
@@ -32,13 +119,24 @@ class SubmissionController extends Controller
             'description' => $request->description,
             'repository_url' => $request->repository_url,
             'media_path' => $path,
+            'verification_message' => $githubValidation['credibility_score'] ?? null,
         ]);
 
-        // 4. Return the ID (The frontend needs this to register on Blockchain)
+        // 5. Return the ID (The frontend needs this to register on Blockchain)
         return response()->json([
             'status' => 'success',
             'id' => $submission->id,
-            'project' => $submission
+            'project' => $submission,
+            'github_validation' => $githubValidation ? [
+                'valid' => $githubValidation['valid'] ?? false,
+                'credible' => $githubValidation['credible'] ?? false,
+                'credibility_score' => $githubValidation['credibility_score'] ?? 0,
+                'repository_info' => $githubValidation['repository'] ?? null,
+                'contributions' => [
+                    'commits_count' => $githubValidation['contributions']['commits_count'] ?? 0,
+                    'has_contributions' => $githubValidation['contributions']['has_contributions'] ?? false,
+                ] ?? null,
+            ] : null,
         ], 201);
         
     }
@@ -46,11 +144,20 @@ class SubmissionController extends Controller
     public function verify(Request $request, $id)
     {
         $submission = Submission::findOrFail($id);
+        
+        $alreadyVerified = $submission->ownership_status === 'verified';
+
         $submission->update([
             'transaction_hash' => $request->tx_hash,
             'ownership_status' => 'verified',
             'verified_at' => now()
         ]);
+
+        // Award XP/SP points only if first time verified
+        if (!$alreadyVerified) {
+            $this->reputationService->awardXpForSubmission($submission);
+        }
+
         return response()->json(['status' => 'verified']);
     }
 

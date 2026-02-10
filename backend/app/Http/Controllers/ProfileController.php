@@ -69,6 +69,7 @@ class ProfileController extends Controller
 
         $request->validate([
             'username' => 'nullable|string|max:255',
+            'github_username' => 'nullable|string|max:255',
             'bio' => 'nullable|string|max:1000',
             'skills' => 'nullable|string|max:1000',
             'developer_type' => 'nullable|string|max:255',
@@ -76,6 +77,7 @@ class ProfileController extends Controller
 
         $user->update([
             'username' => $request->username,
+            'github_username' => $request->github_username,
             'bio' => $request->bio,
             'skills' => $request->skills,
             'developer_type' => $request->developer_type,

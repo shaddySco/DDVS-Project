@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "../lib/axios";
 import { useAuth } from "../context/AuthContext";
 import Button from "./ui/Button";
@@ -7,46 +7,78 @@ export default function ChatModal({ isOpen, onClose, recipientId, recipientName 
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const scrollRef = useRef(null);
+
+  // Check authentication
+  const token = localStorage.getItem('ddvs_token');
+  const isAuthenticated = !!token && !!user;
+
+
+  const fetchMessages = useCallback(async () => {
+    try {
+      const res = await axios.get(`/messages/${recipientId}`);
+      setMessages(res.data);
+      setError("");
+    } catch (err) {
+      console.error("Fetch messages error:", err);
+      if (err.response?.status === 401) {
+        setError("Authentication required. Please connect your wallet.");
+      }
+    }
+  }, [recipientId]);
+
 
   useEffect(() => {
     if (isOpen && recipientId) {
-      fetchMessages();
-      const interval = setInterval(fetchMessages, 5000); // Poll every 5s
-      return () => clearInterval(interval);
+      let mounted = true;
+      (async () => {
+        try {
+          await fetchMessages();
+        } catch {
+          /* ignore */
+        }
+      })();
+      const interval = setInterval(() => { if (mounted) fetchMessages(); }, 5000); // Poll every 5s
+      return () => { mounted = false; clearInterval(interval); };
     }
-  }, [isOpen, recipientId]);
+  }, [isOpen, recipientId, fetchMessages]);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
-
-  const fetchMessages = async () => {
-    try {
-      const res = await axios.get(`/messages/${recipientId}`);
-      setMessages(res.data);
-    } catch (err) {
-      console.error("Fetch messages error:", err);
-    }
-  };
+ 
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
 
+    // Check authentication before sending
+    const token = localStorage.getItem('ddvs_token');
+    if (!token) {
+      setError("Authentication required. Please connect your wallet to send messages.");
+      return;
+    }
+
     try {
       const res = await axios.post(`/messages/${recipientId}`, { content: newMessage });
-      setMessages([...messages, res.data]);
+      setMessages(prev => [...prev, res.data]);
       setNewMessage("");
+      setError("");
     } catch (err) {
       console.error("Send message error:", err);
+      if (err.response?.status === 401) {
+        setError("Authentication failed. Please reconnect your wallet.");
+      } else {
+        setError("Failed to send message. Please try again.");
+      }
     }
   };
 
   if (!isOpen) return null;
+
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
@@ -71,7 +103,24 @@ export default function ChatModal({ isOpen, onClose, recipientId, recipientName 
           </button>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="p-3 bg-red-500/10 border-b border-red-500/30 text-red-500 text-sm text-center">
+            {error}
+          </div>
+        )}
+
+        {/* Authentication Required Message */}
+        {!isAuthenticated && (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+            <div className="text-4xl mb-4">🔒</div>
+            <h3 className="text-white font-bold mb-2">Authentication Required</h3>
+            <p className="text-gray-400 text-sm mb-4">Please connect your wallet to access secure messaging.</p>
+          </div>
+        )}
+
         {/* Messages Pool */}
+        {isAuthenticated && (
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-black/20">
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-8 opacity-20">
@@ -79,6 +128,7 @@ export default function ChatModal({ isOpen, onClose, recipientId, recipientName 
                <p className="text-xs font-black uppercase tracking-[0.2em]">Initiate Secure Transmission</p>
             </div>
           ) : (
+
             messages.map((msg) => (
               <div 
                 key={msg.id} 
@@ -100,9 +150,12 @@ export default function ChatModal({ isOpen, onClose, recipientId, recipientName 
             ))
           )}
         </div>
+        )}
 
         {/* Input Area */}
+        {isAuthenticated && (
         <form onSubmit={handleSendMessage} className="p-4 bg-white/5 border-t border-white/5">
+
           <div className="relative group">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-neon-blue/50 to-neon-purple/50 rounded-xl blur opacity-0 group-focus-within:opacity-20 transition duration-500"></div>
             <div className="relative flex gap-2">
@@ -122,7 +175,7 @@ export default function ChatModal({ isOpen, onClose, recipientId, recipientName 
             </div>
           </div>
         </form>
-
+        )}
       </div>
     </div>
   );
